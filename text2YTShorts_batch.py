@@ -2,7 +2,7 @@ import os
 import text2YTShorts_single
 import logging
 
-topic_file = "inputs/AI_YouTuber/20250213.topics"
+topic_file = "inputs/20250217.topics"
 with open(topic_file, 'r') as f:
     lines = f.readlines()
 
@@ -12,14 +12,14 @@ for line in lines:
         continue
     line = line.split()
     topic = line[0]
-    music = line[1]
+    music = line[1] if len(line) > 1 else None
     indices_to_process = [int(i) for i in line[2:]] if len(line) > 2 else None # None if no indices provided
 
     print(f"Processing {topic}")
-    json_file = f"inputs/AI_YouTuber/scripts/{topic}.json"
+    json_file = f"inputs/scripts/{topic}.json"
     topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
-    working_dir = f"outputs/HunYuan/{topic_file_name}_{topic}"
-    music_path = f"inputs/AI_YouTuber/music/{music}.m4a"
+    working_dir = f"outputs/{topic_file_name}_{topic}"
+    music_path = f"inputs/music/{music}.m4a" if music else None
     log_file = os.path.join(working_dir, f"{topic}.log")
 
     os.makedirs(working_dir, exist_ok=True)

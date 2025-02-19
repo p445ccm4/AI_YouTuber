@@ -10,7 +10,7 @@ class FreezeVideoGenerator:
     def __init__(self, logger=None):
         self.logger = logger if logger else logging.getLogger(__name__)
         self.pipe = FluxPipeline.from_pretrained("./models/FLUX.1-dev", torch_dtype=torch.bfloat16)
-        self.pipe = self.pipe.to('cuda')
+        self.pipe = self.pipe.to('cpu')
 
     def generate_freeze_video(self, prompt, index, output_video_path, fps=20, num_frames=None):
         output_dir = os.path.dirname(output_video_path)
@@ -19,7 +19,7 @@ class FreezeVideoGenerator:
 
         if num_frames is None:
             if index != -1:
-                audio_path = f"{output_dir}/{index}.mp3"
+                audio_path = f"{output_dir}/{index}.wav"
                 audio_clip = moviepy.AudioFileClip(audio_path)
                 num_frames = audio_clip.duration * fps
             else:
@@ -27,15 +27,17 @@ class FreezeVideoGenerator:
 
         num_frames = int(num_frames // 4 * 4 + 1)
         self.logger.info(f"num_frames: {num_frames}")
+        self.pipe = self.pipe.to('cuda')
         output = self.pipe(
             prompt=prompt,
             height=1280,
             width=720,
             num_inference_steps=40,
         ).images[0]
+        self.pipe = self.pipe.to('cpu')
 
         # Create a video clip from the frames
-        clip = moviepy.ImageClip(np.array(output), fps=fps).with_duration(num_frames / fps)
+        clip = moviepy.ImageClip(np.array(output)).with_duration(num_frames / fps)
 
         # Write the video clip to a file
         clip.write_videofile(output_video_path, fps=fps)

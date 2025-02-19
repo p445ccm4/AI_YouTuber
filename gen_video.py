@@ -5,7 +5,6 @@ import moviepy
 import argparse
 import os
 import logging
-from EnhanceAVideo.enhance_a_video import enable_enhance, inject_enhance_for_hunyuanvideo, set_enhance_weight
 
 
 class VideoGenerator:
@@ -19,11 +18,11 @@ class VideoGenerator:
         self.pipe.vae.enable_tiling()
         self.pipe.enable_model_cpu_offload()
 
-        # Enhance-A-Video for better prompt adherence
-        inject_enhance_for_hunyuanvideo(self.pipe.transformer)
-        # enhance_weight can be adjusted for better visual quality
-        set_enhance_weight(4)
-        enable_enhance()
+        # # Enhance-A-Video for better prompt adherence
+        # inject_enhance_for_hunyuanvideo(self.pipe.transformer)
+        # # enhance_weight can be adjusted for better visual quality
+        # set_enhance_weight(4)
+        # enable_enhance()
 
     def generate_video(self, prompt, index, output_video_path, fps=5, num_frames=None):
         output_dir = os.path.dirname(output_video_path)
@@ -32,7 +31,7 @@ class VideoGenerator:
 
         if num_frames is None:
             if index != -1:
-                audio_path = f"{output_dir}/{index}.mp3"
+                audio_path = f"{output_dir}/{index}.wav"
                 audio_clip = moviepy.AudioFileClip(audio_path)
                 num_frames = audio_clip.duration * fps
             else:

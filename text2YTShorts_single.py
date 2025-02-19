@@ -2,7 +2,8 @@ import os
 import json
 import argparse
 import logging
-import gen_audio_Zonos, gen_video, gen_freeze_video, interpolate, audio_caption, concat, bg_music
+import traceback
+import gen_audio, gen_video, gen_freeze_video, interpolate, audio_caption, concat, gen_music
 
 class YTShortsMaker:
     def __init__(self, json_file, working_dir, existed_music_path, indices_to_process=None, logger=None):
@@ -12,13 +13,13 @@ class YTShortsMaker:
         self.indices_to_process = indices_to_process
         self.failed_indices = []
         self.logger = logger if logger else logging.getLogger(__name__)
-        self.audio_generator = gen_audio_Zonos.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.mp3")
+        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.wav")
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
         self.interpolator = interpolate.FrameInterpolator(logger=self.logger)
         self.captioner = audio_caption.VideoCaptioner(logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
-        self.bg_music_adder = bg_music.BackgroundMusicAdder(logger=self.logger)
+        self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)
 
     def run(self):
         os.makedirs(self.working_dir, exist_ok=True)
@@ -38,11 +39,11 @@ class YTShortsMaker:
                 prompt = thumbnail.get('prompt')
 
                 # 1. Generate thumbnail
-                self.video_generator.generate_video(
+                self.freeze_video_generator.generate_freeze_video(
                     prompt=prompt,
-                    index="thumbnail",
+                    index=-1,
                     output_video_path=f"{self.working_dir}/-1.mp4",
-                    num_frames=1
+                    num_frames=5
                 )
 
                 # 2. Add caption to thumbnail
@@ -53,12 +54,9 @@ class YTShortsMaker:
                     output_video_path=f"{self.working_dir}/-1_captioned.mp4",
                     title=True
                 )
-            except Exception as e:
-                self.logger.error(f"Error processing thumbnail: {e}")
+            except Exception:
+                self.logger.error(f"Error processing thumbnail: \n{print(traceback.format_exc())}")
                 self.failed_indices.append("thumbnail")
-            
-        if music and self.existed_music_path is None:
-            raise NotImplementedError("Music generation is not yet implemented.")
         
         for element in script:
             index = element.get('index')
@@ -76,7 +74,7 @@ class YTShortsMaker:
                 # 1. Generate audio
                 self.audio_generator.generate_audio(
                     caption=voiceover,
-                    output_audio_path=f"{self.working_dir}/{index}.mp3"
+                    output_audio_path=f"{self.working_dir}/{index}.wav"
                 )
 
                 if is_video:
@@ -103,29 +101,39 @@ class YTShortsMaker:
                 # 3. Add audio and caption to video
                 self.captioner.add_audio_and_caption(
                     caption=caption,
-                    audio_path=f"{self.working_dir}/{index}.mp3",
+                    audio_path=f"{self.working_dir}/{index}.wav",
                     input_video_path=f"{self.working_dir}/{index}_interpolated.mp4",
                     output_video_path=f"{self.working_dir}/{index}_captioned.mp4"
                 )
 
                 self.logger.info(f"Successfully processed iteration with index={index}")
-            except Exception as e:
-                self.logger.error(f"Error processing iteration with index={index}: {e}")
+            except Exception:
+                self.logger.error(f"Error processing iteration with index={index}: \n{print(traceback.format_exc())}")
                 self.failed_indices.append(index)
 
         if not failed_indices:
             self.logger.info("All iterations completed successfully!")
 
-            # 4. Concatenate videos
-            self.concatenator.concatenate_videos()
-
-            # 5. Add background music
-            self.bg_music_adder.add_background_music(
+            try:
+                # 4. Concatenate videos
+                self.concatenator.concatenate_videos()
+                    
+                # 5a. Generate background music if not provided
+                if music and self.existed_music_path is None:
+                    self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
+                    self.existed_music_path = f"{self.working_dir}/music.wav"
+            
+                # 5b. Add background music
+                self.bg_music_adder.add_background_music(
                 input_video_path=f"{self.working_dir}/concat.mp4",
                 music_path=self.existed_music_path,
                 output_video_path=f"{self.working_dir}.mp4"
-            )
-            self.logger.info(f"Final video successfully saved to: {self.working_dir}.mp4")
+                )
+
+                self.logger.info(f"Final video successfully saved to: {self.working_dir}.mp4")
+            except Exception:
+                self.logger.error(f"Error during concatenation or adding background music: \n{print(traceback.format_exc())}")
+
         else:
             self.logger.warning("Some iterations failed. concat.py will not be run.")
             self.logger.warning(f"Failed iterations: {failed_indices}")

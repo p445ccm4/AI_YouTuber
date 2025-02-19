@@ -5,11 +5,11 @@ import os
 import logging
 
 class AudioGenerator:
-    def __init__(self, logger=None):
+    def __init__(self, logger=None, reference_audio=None):
         self.logger = logger if logger else logging.getLogger(__name__)
 
     def generate_audio(self, caption, output_audio_path, speed_factor=1.5):
-        temp_audio_path = output_audio_path.replace(".mp3", "_temp.mp3")
+        temp_audio_path = output_audio_path.replace(".wav", "_temp.wav")
         audio = gTTS(caption, lang="en", tld="us") # lang="yue" for Cantonese, (lang="en", tld="us") for US English
         audio.save(temp_audio_path)
         audio_path = temp_audio_path.replace("_temp", "")

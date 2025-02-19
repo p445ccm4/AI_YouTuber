@@ -1,8 +1,12 @@
 import os
 import text2YTShorts_single
 import logging
+import argparse
 
-topic_file = "inputs/20250217.topics"
+parser = argparse.ArgumentParser(description="Process topics from a file.")
+parser.add_argument("topic_file", help="Path to the topic file.")
+args = parser.parse_args()
+topic_file = args.topic_file
 with open(topic_file, 'r') as f:
     lines = f.readlines()
 
@@ -12,7 +16,7 @@ for line in lines:
         continue
     line = line.split()
     topic = line[0]
-    music = line[1] if len(line) > 1 else None
+    music = line[1] if len(line) > 1 and line[1] != "None" else None
     indices_to_process = [int(i) for i in line[2:]] if len(line) > 2 else None # None if no indices provided
 
     print(f"Processing {topic}")

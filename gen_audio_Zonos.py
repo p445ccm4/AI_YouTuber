@@ -14,30 +14,31 @@ class AudioGenerator:
         self.logger = logger if logger else logging.getLogger(__name__)
         config_path = os.path.join(zonos_model_path, "config.json")
         model_path = os.path.join(zonos_model_path, "model.safetensors")
-        self.model = Zonos.from_local(config_path, model_path, device=device)
+        self.model = Zonos.from_local(config_path, model_path, device=device).to('cpu')
         self.model.eval()  # Set the model to evaluation mode
         self.speaker_embedding = None
 
-    def generate_audio(self, caption, output_audio_path, speed_factor=1.2):
-        temp_wav_path = output_audio_path.replace(".mp3", "_temp.wav")
-        final_wav_path = output_audio_path.replace(".mp3", ".wav")  # Zonos generates WAV files
+    def generate_audio(self, caption, output_audio_path, speed_factor=1.3):
+        temp_audio_path = output_audio_path.replace(".wav", "_temp.wav")
+        # Delete existing audio files if they exist
+        if os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
+        if os.path.exists(output_audio_path):
+            os.remove(output_audio_path)
 
         # Generate audio with Zonos
-        self._generate_audio_with_zonos(caption, temp_wav_path)
+        self._generate_audio_with_zonos(caption, temp_audio_path)
 
         # Apply speed factor using ffmpeg
-        self._apply_speed_factor(temp_wav_path, final_wav_path, speed_factor)
-
-        # Convert WAV to MP3 using ffmpeg
-        self._convert_wav_to_mp3(final_wav_path, output_audio_path)
+        self._speedup_and_normalize(temp_audio_path, output_audio_path, speed_factor)
 
         # Clean up temporary files
-        os.remove(temp_wav_path)
-        os.remove(final_wav_path)
+        os.remove(temp_audio_path)
 
         self.logger.info(f"Generated audio: {output_audio_path}")
 
     def _generate_audio_with_zonos(self, text, output_wav_path):
+        self.model.to(device)
         cond_dict = make_cond_dict(text=text, speaker=self.speaker_embedding, language="en-us")
         conditioning = self.model.prepare_conditioning(cond_dict)
         codes = self.model.generate(conditioning)
@@ -48,27 +49,19 @@ class AudioGenerator:
         # Cache speaker embedding
         if self.speaker_embedding is None: 
             self.speaker_embedding = self.model.make_speaker_embedding(wav, self.model.autoencoder.sampling_rate)
+        
+        self.model.to('cpu')
 
-    def _apply_speed_factor(self, input_wav_path, output_wav_path, speed_factor):
+    def _speedup_and_normalize(self, input_wav_path, output_wav_path, speed_factor):
         subprocess.call([
             "ffmpeg",
             "-hide_banner",
             "-loglevel", "error",
             "-i", input_wav_path,
-            "-filter:a", f"atempo={speed_factor}",
+            "-filter:a", f"atempo={speed_factor},loudnorm=I=-12:TP=-1.5:LRA=11",
             output_wav_path
         ])
         self.logger.info(f"Applied speed factor to: {output_wav_path}")
-
-    def _convert_wav_to_mp3(self, input_wav_path, output_mp3_path):
-        subprocess.call([
-            "ffmpeg",
-            "-hide_banner",
-            "-loglevel", "error",
-            "-i", input_wav_path,
-            output_mp3_path
-        ])
-        self.logger.info(f"Converted WAV to MP3: {output_mp3_path}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

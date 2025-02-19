@@ -3,7 +3,7 @@ import json
 import argparse
 import logging
 import traceback
-import gen_audio, gen_video, gen_freeze_video, interpolate, audio_caption, concat, gen_music
+import gen_audio_Zonos, gen_video, gen_freeze_video, interpolate, audio_caption, concat, gen_music
 
 class YTShortsMaker:
     def __init__(self, json_file, working_dir, existed_music_path, indices_to_process=None, logger=None):
@@ -13,11 +13,11 @@ class YTShortsMaker:
         self.indices_to_process = indices_to_process
         self.failed_indices = []
         self.logger = logger if logger else logging.getLogger(__name__)
-        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.wav")
+        self.audio_generator = gen_audio_Zonos.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.wav")
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
         self.interpolator = interpolate.FrameInterpolator(logger=self.logger)
-        self.captioner = audio_caption.VideoCaptioner(logger=self.logger)
+        self.audio_captioner = audio_caption.VideoCaptioner(logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
         self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)
 
@@ -47,20 +47,21 @@ class YTShortsMaker:
                 )
 
                 # 2. Add caption to thumbnail
-                self.captioner.add_audio_and_caption(
+                self.audio_captioner.add_audio_and_caption(
                     audio_path=None,
                     caption=title,
                     input_video_path=f"{self.working_dir}/-1.mp4",
                     output_video_path=f"{self.working_dir}/-1_captioned.mp4",
                     title=True
                 )
+
+                self.logger.info(f"Successfully processed thumbnail")
             except Exception:
                 self.logger.error(f"Error processing thumbnail: \n{print(traceback.format_exc())}")
                 self.failed_indices.append("thumbnail")
         
         for element in script:
             index = element.get('index')
-
             if self.indices_to_process is not None and index not in self.indices_to_process:
                 self.logger.debug(f"Skipping index {index} as it's not in the provided indices.")
                 continue
@@ -99,7 +100,7 @@ class YTShortsMaker:
                     )
 
                 # 6. Add audio and caption to video
-                self.captioner.add_audio_and_caption(
+                self.audio_captioner.add_audio_and_caption(
                     caption=caption,
                     audio_path=f"{self.working_dir}/{index}.wav",
                     input_video_path=f"{self.working_dir}/{index}_interpolated.mp4",
@@ -122,12 +123,6 @@ class YTShortsMaker:
                 if music and self.existed_music_path is None:
                     self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
                     self.existed_music_path = f"{self.working_dir}/music.wav"
-
-                # 9. Replace voiceover
-                self.audio_generator.generate_audio(
-                    caption=" ".join([element.get('voiceover') for element in script]),
-                    output_audio_path=f"{self.working_dir}/voiceover.wav"
-                )
 
                 # 10. Add background music
                 self.bg_music_adder.add_background_music(

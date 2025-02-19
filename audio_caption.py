@@ -39,7 +39,8 @@ class VideoCaptioner:
 
         # Add audio if provided
         if audio_path:
-            audio_clip = moviepy.AudioFileClip(audio_path)
+            audio_clip = moviepy.AudioFileClip(audio_path).with_effects([moviepy.afx.AudioNormalize()])
+            video_clip.without_audio()
             video_clip = video_clip.with_audio(audio_clip)
         
         # Write the output video file

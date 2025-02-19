@@ -1,5 +1,5 @@
 import os
-import text2YTShorts_single
+import text2YTShorts_single_moreAI
 import logging
 import argparse
 
@@ -20,7 +20,7 @@ for line in lines:
     indices_to_process = [int(i) for i in line[2:]] if len(line) > 2 else None # None if no indices provided
 
     print(f"Processing {topic}")
-    json_file = f"inputs/scripts/{topic}.json"
+    json_file = f"inputs/proposals/{topic}.json"
     topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
     working_dir = f"outputs/{topic_file_name}_{topic}"
     music_path = f"inputs/music/{music}.m4a" if music else None
@@ -34,7 +34,7 @@ for line in lines:
 
     print(f"Starting processing for {topic}")
     try:
-        shorts_maker = text2YTShorts_single.YTShortsMaker(
+        shorts_maker = text2YTShorts_single_moreAI.YTShortsMaker(
             json_file,
             working_dir, 
             music_path, 

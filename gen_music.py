@@ -3,7 +3,7 @@ import os
 import argparse
 import os
 import logging
-from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip
+from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, afx
 from InspireMusic.inspiremusic.cli.inference import set_env_variables, InspireMusicUnified
 
 class MusicGenerator:
@@ -20,8 +20,8 @@ class MusicGenerator:
         """
         Adds background music to a video using MoviePy.
         """
-        video_clip = VideoFileClip(input_video_path).with_volume_scaled(3)
-        audio_clip = AudioFileClip(music_path).with_volume_scaled(0.5)
+        video_clip = VideoFileClip(input_video_path).with_volume_scaled(2)
+        audio_clip = AudioFileClip(music_path).with_effects([afx.AudioNormalize()]).with_volume_scaled(0.2)
 
         # Ensure the music is as long as the video
         start = audio_clip.duration/2 - video_clip.duration/2

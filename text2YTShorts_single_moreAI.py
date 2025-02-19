@@ -134,10 +134,11 @@ class YTShortsMaker:
                 self.logger.info(f"Final video successfully saved to: {self.working_dir}.mp4")
             except Exception:
                 self.logger.error(f"Error during concatenation or adding background music: \n{print(traceback.format_exc())}")
-
+                exit()
         else:
-            self.logger.warning("Some iterations failed. concat.py will not be run.")
-            self.logger.warning(f"Failed iterations: {failed_indices}")
+            self.logger.error("Some iterations failed. concat.py will not be run.")
+            self.logger.error(f"Failed iterations: {failed_indices}")
+            raise Exception("Some iterations failed.")
 
 def main():
     parser = argparse.ArgumentParser(description="Process JSON data to generate YouTube videos.")

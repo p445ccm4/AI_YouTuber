@@ -48,7 +48,7 @@ class AudioGenerator:
 
         # Cache speaker embedding
         if self.speaker_embedding is None: 
-            wav, sr = torchaudio.load(os.path.join(os.path.dirname(output_wav_path), "0.wav"))
+            wav, sr = torchaudio.load(os.path.join(os.path.dirname(output_wav_path), "0_temp.wav"))
             self.speaker_embedding = self.model.make_speaker_embedding(wav, sr)
         
         self.model.to('cpu')

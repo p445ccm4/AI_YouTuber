@@ -12,19 +12,18 @@ class AudioGenerator:
         temp_audio_path = output_audio_path.replace(".wav", "_temp.wav")
         audio = gTTS(caption, lang="en", tld="us") # lang="yue" for Cantonese, (lang="en", tld="us") for US English
         audio.save(temp_audio_path)
-        audio_path = temp_audio_path.replace("_temp", "")
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
+        if os.path.exists(output_audio_path):
+            os.remove(output_audio_path)
         subprocess.call([
             "ffmpeg",
             "-hide_banner",
             "-loglevel", "error",
             "-i", temp_audio_path,
             "-filter:a", f"atempo={speed_factor}",
-            audio_path
+            output_audio_path
         ])
         os.remove(temp_audio_path)
-        self.logger.info(f"Generated audio: {audio_path}")
+        self.logger.info(f"Generated audio: {output_audio_path}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

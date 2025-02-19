@@ -27,9 +27,9 @@ for line in lines:
     log_file = os.path.join(working_dir, f"{topic}.log")
 
     os.makedirs(working_dir, exist_ok=True)
-    if not os.path.exists(log_file):
-        open(log_file, 'a').close()
-    logging.basicConfig(filename=log_file, level=logging.ERROR, 
+    open(log_file, 'a').close()
+    #BUG: cannot log to file
+    logging.basicConfig(filename=log_file, level=logging.INFO, 
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
     print(f"Starting processing for {topic}")

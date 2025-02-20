@@ -16,12 +16,10 @@ topic_file = args.topic_file
 send_email = args.email
 
 with open(topic_file, 'r') as f:
-    lines = f.readlines()
+    lines = [line for line in f.readlines() if not line.strip().startswith("#")]
 
 for line_idx, line in enumerate(lines):
     line = line.strip()
-    if line.startswith("#") or not line:
-        continue
     line = line.split()
     topic = line[0]
     music = line[1] if len(line) > 1 and line[1] != "None" else None

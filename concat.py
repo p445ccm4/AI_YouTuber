@@ -25,7 +25,7 @@ class VideoConcatenator:
 
         # Concatenate all clips
         concat_clip = mp.concatenate_videoclips(clips)
-        concat_clip.write_videofile(os.path.join(self.working_dir, "concat.mp4"), logger=None)
+        concat_clip.write_videofile(os.path.join(self.working_dir, "concat.mp4"), ffmpeg_params=["-hide_banner", "-loglevel", "error"])
 
         self.logger.info("Video concatenation complete.")
 

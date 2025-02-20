@@ -13,9 +13,16 @@ class AudioGenerator:
         self.logger = logger
         config_path = os.path.join(zonos_model_path, "config.json")
         model_path = os.path.join(zonos_model_path, "model.safetensors")
+        self.speaker_embedding = None
         self.model = Zonos.from_local(config_path, model_path, device=device).to('cpu')
         self.model.eval()  # Set the model to evaluation mode
-        self.speaker_embedding = None
+
+        # Cache speaker embedding
+        if os.path.exists(reference_audio):
+            wav, sr = torchaudio.load(reference_audio)
+            self.model.to(device)
+            self.speaker_embedding = self.model.make_speaker_embedding(wav, sr)
+            self.model.to('cpu')
 
     def generate_audio(self, caption, output_audio_path, speed_factor=1.3):
         temp_audio_path = output_audio_path.replace(".wav", "_temp.wav")
@@ -34,6 +41,9 @@ class AudioGenerator:
         torchaudio.save(temp_audio_path, wav, self.model.autoencoder.sampling_rate)
         self.logger.info(f"Zonos generated audio: {temp_audio_path}")
 
+        if self.speaker_embedding is None:
+            self.speaker_embedding = self.model.make_speaker_embedding(wav, self.model.autoencoder.sampling_rate)
+
         # Apply speed factor using ffmpeg
         subprocess.call([
             "ffmpeg",
@@ -46,11 +56,6 @@ class AudioGenerator:
         # Clean up temporary files
         os.remove(temp_audio_path)
         self.logger.info(f"Applied speed factor to: {output_audio_path}")
-
-        # Cache speaker embedding
-        if self.speaker_embedding is None: 
-            wav, sr = torchaudio.load(os.path.join(os.path.dirname(temp_audio_path), "0.wav"))
-            self.speaker_embedding = self.model.make_speaker_embedding(wav, sr)
         
         self.model.to('cpu')
 

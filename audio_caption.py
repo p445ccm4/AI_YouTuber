@@ -22,7 +22,7 @@ class VideoCaptioner:
                     font="Chilanka-Regular", 
                     text=caption, 
                     method="caption",
-                    size=(video_clip.w, video_clip.h),
+                    size=(video_clip.w - 200, video_clip.h - 200),
                     margin=(200, 200),
                     font_size=font_size, 
                     color="white", 
@@ -44,7 +44,7 @@ class VideoCaptioner:
             video_clip = video_clip.with_audio(audio_clip)
         
         # Write the output video file
-        video_clip.write_videofile(output_video_path, logger=None)
+        video_clip.write_videofile(output_video_path, ffmpeg_params=["-hide_banner", "-loglevel", "error"])
 
         # Delete the original video
         # os.remove(input_video_path)

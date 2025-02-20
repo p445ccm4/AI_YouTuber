@@ -11,7 +11,6 @@ class YTShortsMaker:
         self.working_dir = working_dir
         self.existed_music_path = existed_music_path
         self.indices_to_process = indices_to_process
-        self.failed_indices = []
         self.logger = logger
         self.audio_generator = gen_audio_Zonos.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.wav")
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
@@ -23,22 +22,21 @@ class YTShortsMaker:
 
     def run(self):
         os.makedirs(self.working_dir, exist_ok=True)
-        failed_indices = []
+        failed_idx_traceback = {}
 
         with open(self.json_file, 'r') as f:
             data = json.load(f)
             script = data.get('script', data.get('proposal'))
             thumbnail = data.get('thumbnail')
             music = data.get('music', None)
+            long_title = thumbnail.get('long_title')
+            short_title = thumbnail.get('short_title')
+            prompt = thumbnail.get('prompt')
         
         if self.indices_to_process is not None and -1 not in self.indices_to_process:
             self.logger.debug(f"Skipping thumbnail generation as -1 is not in the provided indices.")
         else:
             try:
-                long_title = thumbnail.get('long_title')
-                short_title = thumbnail.get('short_title')
-                prompt = thumbnail.get('prompt')
-
                 # 1. Generate thumbnail
                 self.freeze_video_generator.generate_freeze_video(
                     prompt=prompt,
@@ -57,9 +55,11 @@ class YTShortsMaker:
                 )
 
                 self.logger.info(f"Successfully processed thumbnail")
-            except Exception:
-                self.logger.error(f"Error processing thumbnail: \n{print(traceback.format_exc())}")
-                self.failed_indices.append("thumbnail")
+            except Exception as e:
+                trace = traceback.format_exc()
+                self.logger.error(f"Error processing thumbnail: \n{trace}")
+                failed_idx_traceback["thumbnail"] = trace
+
         
         for element in script:
             index = element.get('index')
@@ -109,11 +109,12 @@ class YTShortsMaker:
                 )
 
                 self.logger.info(f"Successfully processed iteration with index={index}")
-            except Exception:
-                self.logger.error(f"Error processing iteration with index={index}: \n{print(traceback.format_exc())}")
-                self.failed_indices.append(index)
+            except Exception as e:
+                trace = traceback.format_exc()
+                self.logger.error(f"Error processing iteration with index={index}: \n{trace}")
+                failed_idx_traceback[index] = trace
 
-        if not failed_indices:
+        if not failed_idx_traceback:
             self.logger.info("All iterations completed successfully!")
 
             try:
@@ -136,12 +137,16 @@ class YTShortsMaker:
                 )
 
                 self.logger.info(f"Final video successfully saved to: {self.working_dir}_{long_title}.mp4")
-            except Exception:
-                self.logger.error(f"Error during concatenation or adding background music: \n{print(traceback.format_exc())}")
-        else:
-            self.logger.error("Some iterations failed. concat.py will not be run.")
-            self.logger.error(f"Failed iterations: {failed_indices}")
-            raise Exception("Some iterations failed.")
+            except Exception as e:
+                trace = traceback.format_exc()
+                self.logger.error(f"Error during concatenation or adding background music: \n{trace}")
+                failed_idx_traceback["concat_music"] = trace
+        
+        if failed_idx_traceback:
+            self.logger.error("Some iterations failed. concat.py may not be complete.")
+            for index, trace in failed_idx_traceback.items():
+                self.logger.error(f"Failed iteration {index}: \n{trace}")
+            raise Exception(f"Failed iterations: \n{json.dumps(failed_idx_traceback)}")
 
 def main():
     parser = argparse.ArgumentParser(description="Process JSON data to generate YouTube videos.")

@@ -8,7 +8,7 @@ import logging
 
 class FreezeVideoGenerator:
     def __init__(self, logger=None):
-        self.logger = logger if logger else logging.getLogger(__name__)
+        self.logger = logger
         self.pipe = FluxPipeline.from_pretrained("./models/FLUX.1-dev", torch_dtype=torch.bfloat16)
         self.pipe = self.pipe.to('cpu')
 

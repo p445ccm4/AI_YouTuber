@@ -12,7 +12,7 @@ class YTShortsMaker:
         self.existed_music_path = existed_music_path
         self.indices_to_process = indices_to_process
         self.failed_indices = []
-        self.logger = logger if logger else logging.getLogger(__name__)
+        self.logger = logger
         self.audio_generator = gen_audio_Zonos.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.wav")
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
@@ -35,7 +35,8 @@ class YTShortsMaker:
             self.logger.debug(f"Skipping thumbnail generation as -1 is not in the provided indices.")
         else:
             try:
-                title = thumbnail.get('title')
+                long_title = thumbnail.get('long_title')
+                short_title = thumbnail.get('short_title')
                 prompt = thumbnail.get('prompt')
 
                 # 1. Generate thumbnail
@@ -49,7 +50,7 @@ class YTShortsMaker:
                 # 2. Add caption to thumbnail
                 self.audio_captioner.add_audio_and_caption(
                     audio_path=None,
-                    caption=title,
+                    caption=short_title,
                     input_video_path=f"{self.working_dir}/-1.mp4",
                     output_video_path=f"{self.working_dir}/-1_captioned.mp4",
                     title=True
@@ -121,20 +122,22 @@ class YTShortsMaker:
                     
                 # 8. Generate background music if not provided
                 if music and self.existed_music_path is None:
-                    self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
                     self.existed_music_path = f"{self.working_dir}/music.wav"
+                    if self.indices_to_process is not None and 99 not in self.indices_to_process:
+                        self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
+                    else:
+                        self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
 
                 # 10. Add background music
                 self.bg_music_adder.add_background_music(
                 input_video_path=f"{self.working_dir}/concat.mp4",
                 music_path=self.existed_music_path,
-                output_video_path=f"{self.working_dir}.mp4"
+                output_video_path=f"{self.working_dir}_{long_title}.mp4"
                 )
 
-                self.logger.info(f"Final video successfully saved to: {self.working_dir}.mp4")
+                self.logger.info(f"Final video successfully saved to: {self.working_dir}_{long_title}.mp4")
             except Exception:
                 self.logger.error(f"Error during concatenation or adding background music: \n{print(traceback.format_exc())}")
-                exit()
         else:
             self.logger.error("Some iterations failed. concat.py will not be run.")
             self.logger.error(f"Failed iterations: {failed_indices}")

@@ -8,7 +8,7 @@ from InspireMusic.inspiremusic.cli.inference import set_env_variables, InspireMu
 
 class MusicGenerator:
     def __init__(self, logger=None):
-        self.logger = logger if logger else logging.getLogger(__name__)
+        self.logger = logger
 
     def generate_music(self, prompt, output_audio_path):
         set_env_variables()
@@ -23,10 +23,11 @@ class MusicGenerator:
         video_clip = VideoFileClip(input_video_path).with_volume_scaled(2)
         audio_clip = AudioFileClip(music_path).with_effects([afx.AudioNormalize()]).with_volume_scaled(0.3)
 
-        # Ensure the music is as long as the video
-        start = audio_clip.duration/2 - video_clip.duration/2
-        end = audio_clip.duration/2 + video_clip.duration/2
-        audio_clip = audio_clip.subclipped(start, end)
+        # Play the middle part of the music if it is longer than the video
+        if audio_clip.duration > video_clip.duration:
+            start = audio_clip.duration/2 - video_clip.duration/2
+            end = audio_clip.duration/2 + video_clip.duration/2
+            audio_clip = audio_clip.subclipped(start, end)
 
         # Combine video and audio
         final_audio = CompositeAudioClip([video_clip.audio, audio_clip])

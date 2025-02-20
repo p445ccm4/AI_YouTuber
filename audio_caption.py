@@ -5,7 +5,7 @@ import logging
 
 class VideoCaptioner:
     def __init__(self, logger=None):
-        self.logger = logger if logger else logging.getLogger(__name__)
+        self.logger = logger
 
     def add_audio_and_caption(self, audio_path, input_video_path, output_video_path, caption, title=False):
         # Load video
@@ -23,7 +23,7 @@ class VideoCaptioner:
                     text=caption, 
                     method="caption",
                     size=(video_clip.w, video_clip.h),
-                    margin=(100, 100),
+                    margin=(200, 200),
                     font_size=font_size, 
                     color="white", 
                     bg_color=None,

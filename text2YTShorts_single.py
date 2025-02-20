@@ -12,7 +12,7 @@ class YTShortsMaker:
         self.existed_music_path = existed_music_path
         self.indices_to_process = indices_to_process
         self.failed_indices = []
-        self.logger = logger if logger else logging.getLogger(__name__)
+        self.logger = logger
         self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.wav")
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)

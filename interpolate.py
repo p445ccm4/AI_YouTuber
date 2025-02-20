@@ -26,7 +26,7 @@ class FrameInterpolator:
         model_path="./models/rife"
         self.device = device
         self.model = load_rife_model(model_path)
-        self.logger = logger if logger else logging.getLogger(__name__)
+        self.logger = logger
 
     def interpolate(self, input_video_path, output_video_path):
         self.logger.info(f"Interpolating video: {input_video_path} -> {output_video_path}")

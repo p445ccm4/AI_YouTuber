@@ -6,7 +6,7 @@ import logging
 
 class AudioGenerator:
     def __init__(self, logger=None, reference_audio=None):
-        self.logger = logger if logger else logging.getLogger(__name__)
+        self.logger = logger
 
     def generate_audio(self, caption, output_audio_path, speed_factor=1.5):
         temp_audio_path = output_audio_path.replace(".wav", "_temp.wav")

@@ -9,7 +9,7 @@ import logging
 
 class VideoGenerator:
     def __init__(self, logger=None):
-        self.logger = logger if logger else logging.getLogger(__name__)
+        self.logger = logger
         model_id = "./models/HunyuanVideo"
         self.transformer = HunyuanVideoTransformer3DModel.from_pretrained(
             model_id, subfolder="transformer", torch_dtype=torch.bfloat16

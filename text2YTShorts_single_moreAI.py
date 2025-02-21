@@ -6,10 +6,9 @@ import traceback
 import gen_audio_Zonos, gen_video, gen_freeze_video, interpolate, audio_caption, concat, gen_music
 
 class YTShortsMaker:
-    def __init__(self, json_file, working_dir, existed_music_path, indices_to_process=None, logger=None):
+    def __init__(self, json_file, working_dir, indices_to_process=None, logger=None):
         self.json_file = json_file
         self.working_dir = working_dir
-        self.existed_music_path = existed_music_path
         self.indices_to_process = indices_to_process
         self.logger = logger
         self.audio_generator = gen_audio_Zonos.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.wav")
@@ -121,18 +120,16 @@ class YTShortsMaker:
                 # 7. Concatenate videos
                 self.concatenator.concatenate_videos()
                     
-                # 8. Generate background music if not provided
-                if music and self.existed_music_path is None:
-                    self.existed_music_path = f"{self.working_dir}/music.wav"
-                    if self.indices_to_process is not None and 99 not in self.indices_to_process:
-                        self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
-                    else:
-                        self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
+                # 8. Generate background music
+                if self.indices_to_process is not None and 99 not in self.indices_to_process:
+                    self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
+                else:
+                    self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
 
                 # 10. Add background music
                 self.bg_music_adder.add_background_music(
                 input_video_path=f"{self.working_dir}/concat.mp4",
-                music_path=self.existed_music_path,
+                music_path=f"{self.working_dir}/music.wav",
                 output_video_path=f"{self.working_dir}_{long_title}.mp4"
                 )
 
@@ -146,7 +143,8 @@ class YTShortsMaker:
             self.logger.error("Some iterations failed. concat.py may not be complete.")
             for index, trace in failed_idx_traceback.items():
                 self.logger.error(f"Failed iteration {index}: \n{trace}")
-            raise Exception(f"Failed iterations: \n{json.dumps(failed_idx_traceback)}")
+            string_failed_idx_traceback = bytes(json.dumps(failed_idx_traceback, separators=(", \n", ": \n")), "utf-8").decode("unicode_escape")
+            raise Exception(f"\nFailed iterations: \n{string_failed_idx_traceback}")
 
 def main():
     parser = argparse.ArgumentParser(description="Process JSON data to generate YouTube videos.")

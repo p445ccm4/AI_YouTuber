@@ -19,16 +19,13 @@ with open(topic_file, 'r') as f:
     lines = [line for line in f.readlines() if not line.strip().startswith("#")]
 
 for line_idx, line in enumerate(lines):
-    line = line.strip()
-    line = line.split()
+    line = line.strip().split()
     topic = line[0]
-    music = line[1] if len(line) > 1 and line[1] != "None" else None
-    indices_to_process = [int(i) for i in line[2:]] if len(line) > 2 else None # None if no indices provided
+    indices_to_process = [int(i) for i in line[1:]] if len(line) > 1 else None # None if no indices provided
 
     json_file = f"inputs/proposals/{topic}.json"
     topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
     working_dir = f"outputs/{topic_file_name}_{topic}"
-    music_path = f"inputs/music/{music}.m4a" if music else None
     log_file = os.path.join(working_dir, f"{topic}.log")
 
     start_time = time.time()
@@ -45,7 +42,6 @@ for line_idx, line in enumerate(lines):
         shorts_maker = text2YTShorts_single_moreAI.YTShortsMaker(
             json_file,
             working_dir, 
-            music_path, 
             indices_to_process,
             logger=logger
         )
@@ -67,9 +63,13 @@ for line_idx, line in enumerate(lines):
                 sender_password = f.readline().strip()
             receiver_email = "michael.ch@success-base.com"
 
-            processing_time_minutes = int(processing_time // 60)
-            processing_time_seconds = int(processing_time % 60)
-            message = MIMEText(f"Topic: {topic}\nStatus: {status}\nFinish Time: {datetime.datetime.now()}\nProcessing Time: {processing_time_minutes} minutes {processing_time_seconds} seconds\nTraceback:\n{trace}\nRemaining Topics: {len(lines) - line_idx - 1}")
+            formatted_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            message = MIMEText(f"Topic: {topic}\n\n"
+                               f"Status: {status}\n\n"
+                               f"Finish Time: {formatted_time}\n\n"
+                               f"Processing Time: {int(processing_time // 60)} minutes {int(processing_time % 60)} seconds\n\n"
+                               f"Traceback:\n{trace}\n\n"
+                               f"Remaining Topics: {len(lines) - line_idx - 1}")
             message['Subject'] = f"Topic {topic} Processing Report: {status}"
             message['From'] = sender_email
             message['To'] = receiver_email

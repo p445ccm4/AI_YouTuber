@@ -7,6 +7,7 @@ import smtplib
 from email.mime.text import MIMEText
 import datetime
 import time
+from upload_YouTube import authenticate_youtube
 
 parser = argparse.ArgumentParser(description="Process topics from a file.")
 parser.add_argument("topic_file", help="Path to the topic file.")
@@ -15,8 +16,9 @@ args = parser.parse_args()
 topic_file = args.topic_file
 send_email = args.email
 
+youtube = authenticate_youtube("inputs/YouTube_Upload_API.json")
 with open(topic_file, 'r') as f:
-    lines = [line for line in f.readlines() if not line.strip().startswith("#")]
+    lines = [line for line in f.readlines() if len(line) != 0 and not line.strip().startswith("#")]
 
 for line_idx, line in enumerate(lines):
     line = line.strip().split()
@@ -38,20 +40,21 @@ for line_idx, line in enumerate(lines):
     logger.addHandler(handler)
     logger.info(f"Starting processing for {topic}")
 
+    status = "Failed"
     try:
         shorts_maker = text2YTShorts_single_moreAI.YTShortsMaker(
             json_file,
             working_dir, 
             indices_to_process,
-            logger=logger
+            logger=logger,
+            youtube=youtube
         )
         shorts_maker.run()
         status = "Successfully"
         trace = None
         logger.info(f"Finished processing {topic} successfully")
     except Exception as e:
-        status = "Failed"
-        trace = traceback.format_exc()
+        trace = traceback.format_exc() or "probably keyboard interruption"
         logger.error(f"Error processing {topic}: \n{trace}")
     finally:
         end_time = time.time()

@@ -21,7 +21,7 @@ class MusicGenerator:
         Adds background music to a video using MoviePy.
         """
         video_clip = VideoFileClip(input_video_path).with_volume_scaled(2)
-        audio_clip = AudioFileClip(music_path).with_effects([afx.AudioNormalize()]).with_volume_scaled(0.5)
+        audio_clip = AudioFileClip(music_path).with_effects([afx.AudioNormalize()]).with_volume_scaled(0.2)
 
         # Play the middle part of the music if it is longer than the video
         if audio_clip.duration > video_clip.duration:

@@ -3,10 +3,10 @@ import json
 import argparse
 import logging
 import traceback
-import gen_audio_Zonos, gen_video, gen_freeze_video, interpolate, audio_caption, concat, gen_music
+import gen_audio_Zonos, gen_video, gen_freeze_video, interpolate, audio_caption, concat, gen_music, upload_YouTube
 
 class YTShortsMaker:
-    def __init__(self, json_file, working_dir, indices_to_process=None, logger=None):
+    def __init__(self, json_file, working_dir, indices_to_process=None, logger=None, youtube=None):
         self.json_file = json_file
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
@@ -18,6 +18,7 @@ class YTShortsMaker:
         self.audio_captioner = audio_caption.VideoCaptioner(logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
         self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)
+        self.yt_uploader = upload_YouTube.YouTubeUploader(logger=self.logger, youtube=youtube)
 
     def run(self):
         os.makedirs(self.working_dir, exist_ok=True)
@@ -69,7 +70,7 @@ class YTShortsMaker:
             caption = element.get('caption')
             prompt = element.get('prompt')
             voiceover = element.get('voiceover', caption)
-            is_video = element.get('is_video', True)
+            is_video = element.get('is_video', False)
 
             try:
                 # 3. Generate audio
@@ -130,17 +131,23 @@ class YTShortsMaker:
                 self.bg_music_adder.add_background_music(
                 input_video_path=f"{self.working_dir}/concat.mp4",
                 music_path=f"{self.working_dir}/music.wav",
-                output_video_path=f"{self.working_dir}_{long_title}.mp4"
+                output_video_path=f"{self.working_dir}/final.mp4"
                 )
 
-                self.logger.info(f"Final video successfully saved to: {self.working_dir}_{long_title}.mp4")
+                # 11. Upload to YouTube
+                self.yt_uploader.upload_video(
+                    input_video_path=f"{self.working_dir}/final.mp4",
+                    title=long_title
+                )
+
+                self.logger.info(f"{self.working_dir} successfully processed")
             except Exception as e:
                 trace = traceback.format_exc()
-                self.logger.error(f"Error during concatenation or adding background music: \n{trace}")
-                failed_idx_traceback["concat_music"] = trace
+                self.logger.error(f"Error during concatenation, adding background music or uploading to YouTube: \n{trace}")
+                failed_idx_traceback["concat_music_youtube"] = trace
         
         if failed_idx_traceback:
-            self.logger.error("Some iterations failed. concat.py may not be complete.")
+            self.logger.error("Something failed. process may not be complete.")
             for index, trace in failed_idx_traceback.items():
                 self.logger.error(f"Failed iteration {index}: \n{trace}")
             string_failed_idx_traceback = bytes(json.dumps(failed_idx_traceback, separators=(", \n", ": \n")), "utf-8").decode("unicode_escape")
@@ -150,7 +157,6 @@ def main():
     parser = argparse.ArgumentParser(description="Process JSON data to generate YouTube videos.")
     parser.add_argument("-j", "--json_file", default="inputs/proposals/News_trump_ditches_penny.json", help="Path to the JSON file.")
     parser.add_argument("-w", "--working_dir", default="outputs/20250211_News_trump_ditches_penny", help="Working directory for output files.")
-    parser.add_argument("-m", "--music_path", default=None, help="Path to the background music file.")
     parser.add_argument("-i", "--indices", nargs='+', type=int, help="List of indices to process. If not provided, all indices will be processed.")
     parser.add_argument("-l", "--log_level", default="ERROR", help="Logging level (e.g., DEBUG, INFO, WARNING, ERROR)")
     args = parser.parse_args()
@@ -164,10 +170,9 @@ def main():
 
     json_file = args.json_file
     working_dir = args.working_dir
-    music_path = args.music_path
     indices_to_process = args.indices
 
-    shorts_maker = YTShortsMaker(json_file, working_dir, music_path, indices_to_process, logger)
+    shorts_maker = YTShortsMaker(json_file, working_dir, indices_to_process, logger)
     shorts_maker.run()
 
 if __name__ == "__main__":

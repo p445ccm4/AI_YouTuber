@@ -25,28 +25,39 @@ class FrameInterpolator:
     def __init__(self, device='cuda', logger=None):
         model_path="./models/rife"
         self.device = device
-        self.model = load_rife_model(model_path)
+        self.model_path = model_path
+        self.model = None
         self.logger = logger
+
+    def _load_model(self):
+        if not self.model:
+            self.logger.info("Loading RIFE model...")
+            self.model = load_rife_model(self.model_path)
+            self.logger.info("RIFE model loaded.")
+
 
     def interpolate(self, input_video_path, output_video_path):
         self.logger.info(f"Interpolating video: {input_video_path} -> {output_video_path}")
+
+        self._load_model()
+
         # Read video
         video_frames, _, _ = torchvision.io.read_video(input_video_path)
-        
+
         # Preprocess
         video_frames = video_frames.to(self.device) / 255.0
         video_frames = torch.permute(video_frames, (0, 3, 1, 2))
         video_frames = torch.unsqueeze(video_frames, 0)
-        
+
         # Inference
         video_frames = rife_inference_with_latents(self.model, video_frames) # 5->10
         video_frames = rife_inference_with_latents(self.model, video_frames) # 10->20
-        
+
         # Postprocess
         video_frames = VaeImageProcessor.pt_to_numpy(video_frames[0])
-        
+
         # Export
-        export_to_video(video_frames, output_video_path, fps=20)     
+        export_to_video(video_frames, output_video_path, fps=20)
 
         # Delete the original video
         # os.remove(input_video_path)

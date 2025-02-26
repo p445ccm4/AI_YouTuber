@@ -11,18 +11,32 @@ from Zonos.zonos.utils import DEFAULT_DEVICE as device
 class AudioGenerator:
     def __init__(self, logger=None, zonos_model_path="./models/Zonos-v0.1-transformer", reference_audio=None):
         self.logger = logger
-        config_path = os.path.join(zonos_model_path, "config.json")
-        model_path = os.path.join(zonos_model_path, "model.safetensors")
+        self.zonos_model_path = zonos_model_path
+        self.reference_audio = reference_audio
         self.speaker_embedding = None
-        self.model = Zonos.from_local(config_path, model_path, device=device).to('cpu')
-        self.model.eval()  # Set the model to evaluation mode
+        self.model = None
 
-        # Cache speaker embedding
+        # Initialize speaker embedding if reference audio is provided (and model is loaded lazily later)
         if os.path.exists(reference_audio):
             wav, sr = torchaudio.load(reference_audio)
+            self._load_model() # load temporarily to get embedding
             self.model.to(device)
             self.speaker_embedding = self.model.make_speaker_embedding(wav, sr)
             self.model.to('cpu')
+            self.model = None # unload model after getting embedding, will be loaded again when generating audio
+            self.model_loaded = False # reset model loaded flag
+
+
+    def _load_model(self):
+        if self.model is None:
+            self.logger.info("Loading Zonos model...")
+            config_path = os.path.join(self.zonos_model_path, "config.json")
+            model_path = os.path.join(self.zonos_model_path, "model.safetensors")
+            self.model = Zonos.from_local(config_path, model_path, device=device).to('cpu')
+            self.model.eval()  # Set the model to evaluation mode
+            self.model_loaded = True
+            self.logger.info("Zonos model loaded.")
+
 
     def generate_audio(self, caption, output_audio_path, speed_factor=1.3):
         temp_audio_path = output_audio_path.replace(".wav", "_temp.wav")
@@ -31,6 +45,8 @@ class AudioGenerator:
             os.remove(temp_audio_path)
         if os.path.exists(output_audio_path):
             os.remove(output_audio_path)
+
+        self._load_model() # Load model here
 
         # Generate audio with Zonos
         self.model.to(device)
@@ -56,7 +72,7 @@ class AudioGenerator:
         # Clean up temporary files
         os.remove(temp_audio_path)
         self.logger.info(f"Applied speed factor to: {output_audio_path}")
-        
+
         self.model.to('cpu')
 
 if __name__ == "__main__":

@@ -126,6 +126,7 @@ class YTShortsMaker:
                     self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
                 else:
                     self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
+                    pass
 
                 # 10. Add background music
                 self.bg_music_adder.add_background_music(

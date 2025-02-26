@@ -9,11 +9,21 @@ from InspireMusic.inspiremusic.cli.inference import set_env_variables, InspireMu
 class MusicGenerator:
     def __init__(self, logger=None):
         self.logger = logger
+        self.model = None
+
+    def _load_model(self):
+        if not self.model:
+            self.logger.info("Loading InspireMusic model...")
+            set_env_variables()
+            self.model = InspireMusicUnified(model_name = "InspireMusic-1.5B-Long", model_dir="./models/InspireMusic-1.5B-Long") # result_dir is set in generate_music
+            self.logger.info("InspireMusic model loaded.")
+
 
     def generate_music(self, prompt, output_audio_path):
-        set_env_variables()
-        model = InspireMusicUnified(model_name = "InspireMusic-1.5B-Long", model_dir="./models/InspireMusic-1.5B-Long", result_dir=os.path.dirname(output_audio_path))
-        model.inference("text-to-music", prompt, output_fn=os.path.basename(output_audio_path).split('.')[0])
+        self._load_model()
+        result_dir=os.path.dirname(output_audio_path) 
+        self.model.result_dir = result_dir
+        self.model.inference("text-to-music", prompt, output_fn=os.path.basename(output_audio_path).split('.')[0])
         self.logger.info(f"Generated music saved to {output_audio_path}")
 
     def add_background_music(self, input_video_path, music_path, output_video_path):

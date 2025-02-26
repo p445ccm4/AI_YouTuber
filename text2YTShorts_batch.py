@@ -11,14 +11,12 @@ import time
 parser = argparse.ArgumentParser(description="Process topics from a file.")
 parser.add_argument("topic_file", help="Path to the topic file.")
 parser.add_argument("--email", action="store_true", help="Send email notification when finish processing each video.")
-parser.add_argument("--upload", action="store_true", help="Upload video to YouTube")
 args = parser.parse_args()
 topic_file = args.topic_file
 send_email = args.email
-upload = args.upload
 
 with open(topic_file, 'r') as f:
-    lines = [line for line in f.readlines() if len(line) != 0 and not line.strip().startswith("#")]
+    lines = [line for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
 for line_idx, line in enumerate(lines):
     line = line.strip().split()

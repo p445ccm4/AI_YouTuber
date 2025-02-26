@@ -9,8 +9,14 @@ import logging
 class FreezeVideoGenerator:
     def __init__(self, logger=None):
         self.logger = logger
-        self.pipe = FluxPipeline.from_pretrained("./models/FLUX.1-dev", torch_dtype=torch.bfloat16)
-        self.pipe = self.pipe.to('cpu')
+        self.pipe = None  # Initialize pipe to None, model is not loaded yet
+
+    def _load_model(self):
+        if self.pipe is None: # Check if self.pipe is None
+            self.logger.info("Loading model...")
+            self.pipe = FluxPipeline.from_pretrained("./models/FLUX.1-dev", torch_dtype=torch.bfloat16)
+            self.pipe = self.pipe.to('cpu') # Load on CPU initially
+            self.logger.info("Model loaded.")
 
     def generate_freeze_video(self, prompt, index, output_video_path, fps=20, num_frames=None):
         output_dir = os.path.dirname(output_video_path)
@@ -22,19 +28,23 @@ class FreezeVideoGenerator:
                 audio_path = f"{output_dir}/{index}.wav"
                 audio_clip = moviepy.AudioFileClip(audio_path)
                 num_frames = audio_clip.duration * fps
+                audio_clip.close()
             else:
                 num_frames = 1 # For Thumbnail
 
         num_frames = int(num_frames // 4 * 4 + 1)
         self.logger.info(f"num_frames: {num_frames}")
-        self.pipe = self.pipe.to('cuda')
+
+        self._load_model() # Load model only when generate_freeze_video is called
+
+        self.pipe = self.pipe.to('cuda') # Move model to GPU for generation
         output = self.pipe(
             prompt=prompt,
             height=1280,
             width=720,
             num_inference_steps=40,
         ).images[0]
-        self.pipe = self.pipe.to('cpu')
+        self.pipe = self.pipe.to('cpu') # Move model back to CPU after generation to free GPU memory
 
         # Create a video clip from the frames
         clip = moviepy.ImageClip(np.array(output)).with_duration(num_frames / fps)
@@ -55,4 +65,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     generator = FreezeVideoGenerator(logger)
-    generator.generate_video(args.prompt, args.index, args.output_video_path, num_frames=args.num_frames)
+    generator.generate_freeze_video(args.prompt, args.index, args.output_video_path, num_frames=args.num_frames)

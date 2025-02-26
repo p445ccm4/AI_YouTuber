@@ -10,19 +10,21 @@ import logging
 class VideoGenerator:
     def __init__(self, logger=None):
         self.logger = logger
-        model_id = "./models/HunyuanVideo"
-        self.transformer = HunyuanVideoTransformer3DModel.from_pretrained(
-            model_id, subfolder="transformer", torch_dtype=torch.bfloat16
-        )
-        self.pipe = HunyuanVideoPipeline.from_pretrained(model_id, transformer=self.transformer, torch_dtype=torch.float16)
-        self.pipe.vae.enable_tiling()
-        self.pipe.enable_model_cpu_offload()
+        self.transformer = None
+        self.pipe = None
 
-        # # Enhance-A-Video for better prompt adherence
-        # inject_enhance_for_hunyuanvideo(self.pipe.transformer)
-        # # enhance_weight can be adjusted for better visual quality
-        # set_enhance_weight(4)
-        # enable_enhance()
+    def _load_model(self):
+        if self.pipe is None:
+            self.logger.info("Loading HunyuanVideo models...")
+            model_id = "./models/HunyuanVideo"
+            self.transformer = HunyuanVideoTransformer3DModel.from_pretrained(
+                model_id, subfolder="transformer", torch_dtype=torch.bfloat16
+            )
+            self.pipe = HunyuanVideoPipeline.from_pretrained(model_id, transformer=self.transformer, torch_dtype=torch.float16)
+            self.pipe.vae.enable_tiling()
+            self.pipe.enable_model_cpu_offload()
+            self.logger.info("HunyuanVideo models loaded.")
+
 
     def generate_video(self, prompt, index, output_video_path, fps=5, num_frames=None):
         output_dir = os.path.dirname(output_video_path)
@@ -34,11 +36,15 @@ class VideoGenerator:
                 audio_path = f"{output_dir}/{index}.wav"
                 audio_clip = moviepy.AudioFileClip(audio_path)
                 num_frames = audio_clip.duration * fps
+                audio_clip.close()
             else:
                 num_frames = 1 # For Thumbnail
 
         num_frames = int(num_frames // 4 * 4 + 1)
         self.logger.info(f"num_frames: {num_frames}")
+
+        self._load_model()
+
         output = self.pipe(
             prompt=prompt,
             height=1280,

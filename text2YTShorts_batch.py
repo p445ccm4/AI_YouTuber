@@ -1,22 +1,22 @@
 import os
 import traceback
-import text2YTShorts_single_moreAI
+import text2YTShorts_single
 import logging
 import argparse
 import smtplib
 from email.mime.text import MIMEText
 import datetime
 import time
-from upload_YouTube import authenticate_youtube
 
 parser = argparse.ArgumentParser(description="Process topics from a file.")
 parser.add_argument("topic_file", help="Path to the topic file.")
 parser.add_argument("--email", action="store_true", help="Send email notification when finish processing each video.")
+parser.add_argument("--upload", action="store_true", help="Upload video to YouTube")
 args = parser.parse_args()
 topic_file = args.topic_file
 send_email = args.email
+upload = args.upload
 
-youtube = authenticate_youtube("inputs/YouTube_Upload_API.json")
 with open(topic_file, 'r') as f:
     lines = [line for line in f.readlines() if len(line) != 0 and not line.strip().startswith("#")]
 
@@ -42,12 +42,11 @@ for line_idx, line in enumerate(lines):
 
     status = "Failed"
     try:
-        shorts_maker = text2YTShorts_single_moreAI.YTShortsMaker(
+        shorts_maker = text2YTShorts_single.YTShortsMaker(
             json_file,
             working_dir, 
             indices_to_process,
-            logger=logger,
-            youtube=youtube
+            logger=logger
         )
         shorts_maker.run()
         status = "Successfully"

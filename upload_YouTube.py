@@ -1,3 +1,4 @@
+import json
 import os
 import google_auth_oauthlib
 import googleapiclient.discovery
@@ -26,7 +27,7 @@ class YouTubeUploader:
         self.youtube = youtube or authenticate_youtube(client_secrets_file_path)
 
     def upload_video(self, input_video_path, title, description="Please SUBSRIBE me to help reach 1000 subs!", tags=None, category_id="24", privacy_status="unlisted"):
-        self.logger.info(f"Starting video upload: '{title}' from '{input_video_path}'")
+        self.logger.info(f"Starting video upload of '{input_video_path}': '{title}'")
         request_body = {
             "snippet": {
                 "categoryId": category_id,
@@ -58,17 +59,30 @@ class YouTubeUploader:
 
 def main():
     parser = argparse.ArgumentParser(description="Upload a video to YouTube.")
-    parser.add_argument("video_path", help="Path to the video file to upload.")
-    parser.add_argument("video_title", help="Title of the video.")
-
+    parser.add_argument("topic_file", help="Path to the topic file.")
     args = parser.parse_args()
 
     # Configure basic logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
+    with open(args.topic_file, 'r') as f:
+        topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
+
     uploader = YouTubeUploader(logger=logger)
-    uploader.upload_video(args.video_path, args.video_title)
+    for topic in topics:
+        json_file = f"inputs/proposals/{topic}.json"
+        topic_file_name = os.path.splitext(os.path.basename(args.topic_file))[0]
+        working_dir = f"outputs/{topic_file_name}_{topic}"
+
+        with open(json_file, 'r') as f:
+            data = json.load(f)
+            thumbnail = data.get('thumbnail')
+            long_title = thumbnail.get('long_title')
+
+        uploader.upload_video(
+            input_video_path=f"{working_dir}/final.mp4", 
+            title=long_title)
 
 if __name__ == "__main__":
     main()

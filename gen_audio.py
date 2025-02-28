@@ -23,9 +23,6 @@ class AudioGenerator:
             self.model.to(device)
             self.speaker_embedding = self.model.make_speaker_embedding(wav, sr)
             self.model.to('cpu')
-            self.model = None # unload model after getting embedding, will be loaded again when generating audio
-            self.model_loaded = False # reset model loaded flag
-
 
     def _load_model(self):
         if self.model is None:
@@ -34,7 +31,6 @@ class AudioGenerator:
             model_path = os.path.join(self.zonos_model_path, "model.safetensors")
             self.model = Zonos.from_local(config_path, model_path, device=device).to('cpu')
             self.model.eval()  # Set the model to evaluation mode
-            self.model_loaded = True
             self.logger.info("Zonos model loaded.")
 
 

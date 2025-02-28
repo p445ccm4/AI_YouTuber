@@ -13,10 +13,10 @@ class FreezeVideoGenerator:
 
     def _load_model(self):
         if self.pipe is None: # Check if self.pipe is None
-            self.logger.info("Loading model...")
+            self.logger.info("Loading FLUX model...")
             self.pipe = FluxPipeline.from_pretrained("./models/FLUX.1-dev", torch_dtype=torch.bfloat16)
             self.pipe = self.pipe.to('cpu') # Load on CPU initially
-            self.logger.info("Model loaded.")
+            self.logger.info("FLUX model loaded.")
 
     def generate_freeze_video(self, prompt, index, output_video_path, fps=20, num_frames=None):
         output_dir = os.path.dirname(output_video_path)

@@ -11,7 +11,7 @@ class YTShortsMaker:
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
         self.logger = logger
-        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=f"{self.working_dir}/0.wav")
+        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=f"inputs/reference_audio_slowed.wav")
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
         self.interpolator = interpolate.FrameInterpolator(logger=self.logger)
@@ -175,7 +175,7 @@ def main():
     shorts_maker = YTShortsMaker(
         json_file=args.json_file, 
         working_dir=args.working_dir, 
-        indices_to_process=args.indices_to_process, 
+        indices_to_process=args.indices, 
         logger=logger, 
         youtube=youtube
         )

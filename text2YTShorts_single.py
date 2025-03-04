@@ -11,7 +11,7 @@ class YTShortsMaker:
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
         self.logger = logger
-        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=f"inputs/reference_audio_slowed.wav")
+        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=f"inputs/reference_audio_woman.wav")
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
         self.interpolator = interpolate.FrameInterpolator(logger=self.logger)
@@ -102,7 +102,7 @@ class YTShortsMaker:
 
                 # 6. Add audio and caption to video
                 self.audio_captioner.add_audio_and_caption(
-                    caption=caption,
+                    caption=None,
                     audio_path=f"{self.working_dir}/{index}.wav",
                     input_video_path=f"{self.working_dir}/{index}_interpolated.mp4",
                     output_video_path=f"{self.working_dir}/{index}_captioned.mp4"
@@ -125,7 +125,7 @@ class YTShortsMaker:
                 if self.indices_to_process is not None and 99 not in self.indices_to_process:
                     self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
                 else:
-                    self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
+                    # self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
                     pass
 
                 # 10. Add background music

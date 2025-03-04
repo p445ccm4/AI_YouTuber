@@ -2,12 +2,24 @@ import argparse
 import os
 import moviepy
 import logging
+import whisper_timestamped as whisper
 
 class VideoCaptioner:
     def __init__(self, logger=None):
         self.logger = logger
+        self.whisper_model = None
 
-    def add_audio_and_caption(self, audio_path, input_video_path, output_video_path, caption, title=False):
+    def add_caption_tiktok_style(self, input_video_path, output_video_path):
+        #TODO https://github.com/linto-ai/whisper-timestamped?tab=readme-ov-file#example-output
+        if not self.model:
+            self.model = whisper.load_model("./models/whisper-large-v2-nob", device="cpu")
+
+        audio = whisper.load_audio("AUDIO.wav")
+        self.model.to('cuda')
+        result = whisper.transcribe(self.model, audio, language="en")
+        #TODO: add caption word by word
+
+    def add_audio_and_caption(self, input_video_path, output_video_path, caption=None, audio_path=None, title=False):
         # Load video
         video_clip = moviepy.VideoFileClip(input_video_path)
 

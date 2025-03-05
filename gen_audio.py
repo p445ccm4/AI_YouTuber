@@ -34,7 +34,7 @@ class AudioGenerator:
             self.logger.info("Zonos model loaded.")
 
 
-    def generate_audio(self, caption, output_audio_path, speed_factor=1.3):
+    def generate_audio(self, caption, output_audio_path, speaking_rate=20):
         if os.path.exists(output_audio_path):
             os.remove(output_audio_path)
 
@@ -45,8 +45,8 @@ class AudioGenerator:
         cond_dict = make_cond_dict(text=caption,
                                    speaker=self.speaker_embedding, 
                                    language="en-us",
-                                   speaking_rate=25,
-                                   emotion=[0.9, 0.0256, 0.0256, 0.0256, 0.0256, 0.0256, 0.0256, 0.3077],
+                                   speaking_rate=speaking_rate,
+                                   emotion=[0.9, 0.0256, 0.0256, 0.0256, 0.0256, 0.0256, 0.0256, 0.0256],
                                    )
         conditioning = self.model.prepare_conditioning(cond_dict)
         codes = self.model.generate(conditioning)

@@ -34,7 +34,7 @@ for line_idx, line in enumerate(lines):
     handler = logging.FileHandler(log_file)        
     handler.setFormatter(formatter)
     logger = logging.getLogger(topic)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
     logger.info(f"Starting processing for {topic}")
 

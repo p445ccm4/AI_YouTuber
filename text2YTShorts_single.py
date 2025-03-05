@@ -11,7 +11,8 @@ class YTShortsMaker:
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
         self.logger = logger
-        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=f"inputs/reference_audio_woman.wav")
+        reference_audio = "inputs/reference_audio_man.wav" if "_men_" in json_file else f"inputs/reference_audio_woman.wav"
+        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=reference_audio)
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
         self.interpolator = interpolate.FrameInterpolator(logger=self.logger)
@@ -47,7 +48,7 @@ class YTShortsMaker:
 
                 # 2. Add caption to thumbnail
                 self.audio_captioner.add_audio_and_caption(
-                    audio_path=None,
+                    input_audio_path=None,
                     caption=short_title,
                     input_video_path=f"{self.working_dir}/-1.mp4",
                     output_video_path=f"{self.working_dir}/-1_captioned.mp4",
@@ -73,42 +74,54 @@ class YTShortsMaker:
             is_video = element.get('is_video', False)
 
             try:
-                # 3. Generate audio
-                self.audio_generator.generate_audio(
-                    caption=voiceover,
-                    output_audio_path=f"{self.working_dir}/{index}.wav"
-                )
-
-                if is_video:
-                    # 4a. Generate video
-                    self.video_generator.generate_video(
-                        prompt=prompt,
-                        index=index,
-                        output_video_path=f"{self.working_dir}/{index}.mp4"
+                speaking_rate = 25
+                while True:
+                    # 3. Generate audio
+                    self.audio_generator.generate_audio(
+                        caption=voiceover,
+                        output_audio_path=f"{self.working_dir}/{index}.wav",
+                        speaking_rate=speaking_rate
                     )
 
-                    # 4b. Interpolate video
-                    self.interpolator.interpolate(
+                    if is_video:
+                        # 4a. Generate video
+                        self.video_generator.generate_video(
+                            prompt=prompt,
+                            index=index,
+                            output_video_path=f"{self.working_dir}/{index}_temp.mp4"
+                        )
+
+                        # 4b. Interpolate video
+                        self.interpolator.interpolate(
+                            input_video_path=f"{self.working_dir}/{index}_temp.mp4",
+                            output_video_path=f"{self.working_dir}/{index}.mp4"
+                        )
+                    else:
+                        # 5. Generate freeze video
+                        self.freeze_video_generator.generate_freeze_video(
+                            prompt=prompt,
+                            index=index,
+                            output_video_path=f"{self.working_dir}/{index}.mp4",
+                        )
+
+                    # 6. Add audio and caption to video
+                    caption_matched = self.audio_captioner.add_audio_and_caption_tiktok_style(
+                        caption=caption,
+                        input_audio_path=f"{self.working_dir}/{index}.wav",
                         input_video_path=f"{self.working_dir}/{index}.mp4",
-                        output_video_path=f"{self.working_dir}/{index}_interpolated.mp4"
-                    )
-                else:
-                    # 5. Generate freeze video
-                    self.freeze_video_generator.generate_freeze_video(
-                        prompt=prompt,
-                        index=index,
-                        output_video_path=f"{self.working_dir}/{index}_interpolated.mp4",
+                        output_video_path=f"{self.working_dir}/{index}_captioned.mp4"
                     )
 
-                # 6. Add audio and caption to video
-                self.audio_captioner.add_audio_and_caption(
-                    caption=None,
-                    audio_path=f"{self.working_dir}/{index}.wav",
-                    input_video_path=f"{self.working_dir}/{index}_interpolated.mp4",
-                    output_video_path=f"{self.working_dir}/{index}_captioned.mp4"
-                )
-
-                self.logger.info(f"Successfully processed iteration with index={index}")
+                    if caption_matched:
+                        self.logger.info(f"Successfully processed iteration with index={index}")
+                        break
+                    elif speaking_rate > 15:
+                        # Generate slower audio if tiktok captioning is failed
+                        self.logger.warn(f"Failed to match caption with speaking rate {speaking_rate}. Retry with slower audio...")
+                        speaking_rate -= 5
+                    else:
+                        raise Exception(f"Failed to match caption with speaking rate {speaking_rate}.")
+                
             except Exception as e:
                 trace = traceback.format_exc()
                 self.logger.error(f"Error processing iteration with index={index}: \n{trace}")
@@ -125,7 +138,7 @@ class YTShortsMaker:
                 if self.indices_to_process is not None and 99 not in self.indices_to_process:
                     self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
                 else:
-                    # self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
+                    self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
                     pass
 
                 # 10. Add background music

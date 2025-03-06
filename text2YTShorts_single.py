@@ -71,7 +71,8 @@ class YTShortsMaker:
             caption = element.get('caption')
             prompt = element.get('prompt')
             voiceover = element.get('voiceover', caption)
-            is_video = element.get('is_video', False)
+            # is_video = element.get('is_video', False)
+            is_video = False
 
             try:
                 speaking_rate = 25
@@ -105,7 +106,7 @@ class YTShortsMaker:
                         )
 
                     # 6. Add audio and caption to video
-                    caption_matched = self.audio_captioner.add_audio_and_caption_tiktok_style(
+                    caption_matched, caption_comparison = self.audio_captioner.add_audio_and_caption_tiktok_style(
                         caption=caption,
                         input_audio_path=f"{self.working_dir}/{index}.wav",
                         input_video_path=f"{self.working_dir}/{index}.mp4",
@@ -117,10 +118,17 @@ class YTShortsMaker:
                         break
                     elif speaking_rate > 15:
                         # Generate slower audio if tiktok captioning is failed
-                        self.logger.warn(f"Failed to match caption with speaking rate {speaking_rate}. Retry with slower audio...")
+                        self.logger.warn(f"""
+                                         Failed to match caption with speaking rate {speaking_rate}. Caption comparison:
+                                         {caption_comparison}
+                                         Retry audio with slower speaking rate...
+                                         """)
                         speaking_rate -= 5
                     else:
-                        raise Exception(f"Failed to match caption with speaking rate {speaking_rate}.")
+                        raise Exception(f"""
+                                         Failed to match caption with speaking rate {speaking_rate}. Caption comparison:
+                                         {caption_comparison}
+                                         """)
                 
             except Exception as e:
                 trace = traceback.format_exc()
@@ -138,14 +146,15 @@ class YTShortsMaker:
                 if self.indices_to_process is not None and 99 not in self.indices_to_process:
                     self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
                 else:
-                    self.bg_music_adder.generate_music(music, f"{self.working_dir}/music.wav")
+                    self.bg_music_adder.generate_music(
+                        music, f"{self.working_dir}/music.wav")
                     pass
 
                 # 10. Add background music
                 self.bg_music_adder.add_background_music(
-                input_video_path=f"{self.working_dir}/concat.mp4",
-                music_path=f"{self.working_dir}/music.wav",
-                output_video_path=f"{self.working_dir}/final.mp4"
+                    input_video_path=f"{self.working_dir}/concat.mp4",
+                    music_path=f"{self.working_dir}/music.wav",
+                    output_video_path=f"{self.working_dir}/final.mp4"
                 )
 
                 if self.yt_uploader:

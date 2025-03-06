@@ -1,10 +1,10 @@
 import argparse
 import os
+import argparse
+import os
 import logging
 from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, afx
-import soundfile as sf
-from diffusers import StableAudioPipeline
-import torch
+from InspireMusic.inspiremusic.cli.inference import set_env_variables, InspireMusicUnified
 
 class MusicGenerator:
     def __init__(self, logger=None):
@@ -13,26 +13,17 @@ class MusicGenerator:
 
     def _load_model(self):
         if not self.model:
-            self.logger.info("Loading Stable Audio model...")
-            self.pipe = StableAudioPipeline.from_pretrained(
-                "./models/stable-audio-open-1.0", 
-                ).to("cpu")
-            self.logger.info("Stable Audio model loaded.")
+            self.logger.info("Loading InspireMusic model...")
+            set_env_variables()
+            self.model = InspireMusicUnified(model_name = "InspireMusic-1.5B-Long", model_dir="./models/InspireMusic-1.5B-Long") # result_dir is set in generate_music
+            self.logger.info("InspireMusic model loaded.")
+
 
     def generate_music(self, prompt, output_audio_path):
         self._load_model()
-        # run the generation
-        self.pipe = self.pipe.to("cuda")
-        audio = self.pipe(
-            prompt,
-            negative_prompt="low quality, human vocal voice",
-            num_inference_steps=200,
-            audio_end_in_s=47.55,
-            num_waveforms_per_prompt=3,
-        ).audios
-        self.pipe = self.pipe.to("cpu")
-        output = audio[0].T.float().cpu().numpy()
-        sf.write(output_audio_path, output, self.pipe.vae.sampling_rate)
+        result_dir=os.path.dirname(output_audio_path) 
+        self.model.result_dir = result_dir
+        self.model.inference("text-to-music", prompt, output_fn=os.path.basename(output_audio_path).split('.')[0])
         self.logger.info(f"Generated music saved to {output_audio_path}")
 
     def add_background_music(self, input_video_path, music_path, output_video_path):
@@ -40,7 +31,7 @@ class MusicGenerator:
         Adds background music to a video using MoviePy.
         """
         video_clip = VideoFileClip(input_video_path).with_volume_scaled(2)
-        audio_clip = AudioFileClip(music_path).with_effects([afx.AudioNormalize()]).with_volume_scaled(0.3)
+        audio_clip = AudioFileClip(music_path).with_effects([afx.AudioNormalize()]).with_volume_scaled(0.4)
 
         # Play the middle part of the music if it is longer than the video
         if audio_clip.duration > video_clip.duration:

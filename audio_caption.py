@@ -3,8 +3,6 @@ import os
 import moviepy
 import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-import torch
-import torchaudio
 
 class VideoCaptioner:
     def __init__(self, logger=None):
@@ -44,9 +42,10 @@ class VideoCaptioner:
         # Return False if the transcription is not matched with caption
         transcription = ''.join(e for e in result["text"] if e.isalnum()).lower()
         caption = ''.join(e for e in caption if e.isalnum()).lower()
-        self.logger.info(f"transcription: {transcription}\n caption: {caption}")
+        comparison = f"\nTranscription:\t{transcription}\nCaption:\t{caption}"
+        self.logger.info(comparison)
         if transcription != caption:
-            return False
+            return False, comparison
 
         # Load video and audio
         video_clip = moviepy.VideoFileClip(input_video_path)
@@ -99,7 +98,7 @@ class VideoCaptioner:
         final_clip.write_videofile(output_video_path, ffmpeg_params=["-hide_banner", "-loglevel", "error"])
 
         self.logger.info(f"Successfully added timed captions to video: {output_video_path}")
-        return True
+        return True, comparison
 
     def add_audio_and_caption(self, input_video_path, output_video_path, caption=None, input_audio_path=None, title=False):
         # Load video

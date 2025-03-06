@@ -26,7 +26,7 @@ class YouTubeUploader:
         self.logger = logger
         self.youtube = youtube or authenticate_youtube(client_secrets_file_path)
 
-    def upload_video(self, input_video_path, title, description="Please SUBSRIBE me to help reach 1000 subs!", tags=None, category_id="24", privacy_status="unlisted"):
+    def upload_video(self, input_video_path, title, description, tags, category_id="24", privacy_status="unlisted"):
         self.logger.info(f"Starting video upload of '{input_video_path}': '{title}'")
         request_body = {
             "snippet": {
@@ -77,12 +77,17 @@ def main():
 
         with open(json_file, 'r') as f:
             data = json.load(f)
+            description = data.get('description', "This content is made by me, HiLo World. All right reserved. Contact me if you want to use my content.")
+            tags = data.get('tags', None)
             thumbnail = data.get('thumbnail')
             long_title = thumbnail.get('long_title')
 
         uploader.upload_video(
             input_video_path=f"{working_dir}/final.mp4", 
-            title=long_title)
+            description=description,
+            tags=tags,
+            title=long_title
+            )
 
 if __name__ == "__main__":
     main()

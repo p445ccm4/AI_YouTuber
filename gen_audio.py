@@ -46,7 +46,8 @@ class AudioGenerator:
                                    speaker=self.speaker_embedding, 
                                    language="en-us",
                                    speaking_rate=speaking_rate,
-                                   emotion=[0.9, 0.0256, 0.0256, 0.0256, 0.0256, 0.0256, 0.0256, 0.0256],
+                                   emotion=[0.0256, 0.0256, 0.0256, 0.0256, 0.0256, 0.9, 0.0256, 0.0256],
+                                   # Happiness, Sadness, Disgust, Fear, Surprise, Anger, Other, Neutral
                                    )
         conditioning = self.model.prepare_conditioning(cond_dict)
         codes = self.model.generate(conditioning)

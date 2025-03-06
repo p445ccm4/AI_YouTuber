@@ -43,6 +43,7 @@ class FreezeVideoGenerator:
             height=1280,
             width=720,
             num_inference_steps=40,
+            guidance_scale=30.0,
         ).images[0]
         self.pipe = self.pipe.to('cpu') # Move model back to CPU after generation to free GPU memory
 

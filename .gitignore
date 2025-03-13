@@ -3,3 +3,4 @@
 /inputs/
 /models/
 /__pycache__/
+.gradio/

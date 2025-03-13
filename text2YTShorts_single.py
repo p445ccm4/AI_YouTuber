@@ -11,8 +11,6 @@ class YTShortsMaker:
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
         self.logger = logger
-        reference_audio = "inputs/reference_audio_man.wav" if "_men_" in json_file else f"inputs/reference_audio_woman.wav"
-        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=reference_audio)
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
         self.interpolator = interpolate.FrameInterpolator(logger=self.logger)
@@ -20,6 +18,13 @@ class YTShortsMaker:
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
         self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)
         self.yt_uploader = upload_YouTube.YouTubeUploader(logger=self.logger, youtube=youtube) if youtube else None
+
+        if "_women_" in json_file or "Zodiac_" in json_file or "MBTI_" in json_file:
+            reference_audio = "inputs/reference_audio_woman.wav"
+        else:
+            # "Motivation_", "_men_"
+            reference_audio = "inputs/reference_audio_man.wav"
+        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=reference_audio)
 
     def run(self):
         os.makedirs(self.working_dir, exist_ok=True)
@@ -118,17 +123,15 @@ class YTShortsMaker:
                         break
                     elif speaking_rate > 15:
                         # Generate slower audio if tiktok captioning is failed
-                        self.logger.warn(f"""
-                                         Failed to match caption with speaking rate {speaking_rate}. Caption comparison:
-                                         {caption_comparison}
-                                         Retry audio with slower speaking rate...
+                        self.logger.warn(f"""Failed to match caption with speaking rate {speaking_rate}.\nCaption comparison:
+                                         {caption_comparison}\nRetry audio with slower speaking rate...
                                          """)
-                        speaking_rate -= 5
+                        speaking_rate -= 2
                     else:
                         raise Exception(f"""
-                                         Failed to match caption with speaking rate {speaking_rate}. Caption comparison:
+                                         Failed to match caption with speaking rate {speaking_rate}.\nCaption comparison:
                                          {caption_comparison}
-                                         """)
+                                        """)
                 
             except Exception as e:
                 trace = traceback.format_exc()
@@ -143,7 +146,7 @@ class YTShortsMaker:
                 self.concatenator.concatenate_videos()
                     
                 # 8. Generate background music
-                if self.indices_to_process is not None and 99 not in self.indices_to_process:
+                if self.indices_to_process is not None and 99 not in self.indices_to_process and os.path.exists(f"{self.working_dir}/music.wav"):
                     self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
                 else:
                     self.bg_music_adder.generate_music(

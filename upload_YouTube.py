@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import googleapiclient.errors
 import googleapiclient.http
 import logging
-import argparse
+# import argparse # Remove argparse
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 TOKEN_FILE = 'token.json'
@@ -56,23 +56,21 @@ class YouTubeUploader:
         video_id = response['id']
         self.logger.info(f"Video uploaded successfully with ID: {video_id}")
 
-
-def main():
-    parser = argparse.ArgumentParser(description="Upload a video to YouTube.")
-    parser.add_argument("topic_file", help="Path to the topic file.")
-    args = parser.parse_args()
-
+def upload_youtube_func(topic_file, logger=None): # Define function, remove argparse
+    output_string = "" # Capture output in a string
     # Configure basic logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
+    uploader = YouTubeUploader(logger=logger)
 
-    with open(args.topic_file, 'r') as f:
+    with open(topic_file, 'r') as f:
         topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
-    uploader = YouTubeUploader(logger=logger)
+    successful_topics = []
+    failed_topics = []
     for topic in topics:
         json_file = f"inputs/proposals/{topic}.json"
-        topic_file_name = os.path.splitext(os.path.basename(args.topic_file))[0]
+        topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
         working_dir = f"outputs/{topic_file_name}_{topic}"
 
         with open(json_file, 'r') as f:
@@ -82,12 +80,31 @@ def main():
             thumbnail = data.get('thumbnail')
             long_title = thumbnail.get('long_title')
 
-        uploader.upload_video(
-            input_video_path=f"{working_dir}/final.mp4", 
+        try:
+            uploader.upload_video(
+            input_video_path=f"{working_dir}/final.mp4",
             description=description,
             tags=tags,
             title=long_title
             )
+            successful_topics.append(topic)
+            output_string += f"Successfully uploaded topic: {topic}\n" # Capture output for gradio
+        except Exception as e:
+            logger.error(f"Failed to upload video for topic {topic}: {e}")
+            failed_topics.append(topic)
+            output_string += f"Failed to upload topic: {topic} - {e}\n" # Capture error for gradio
 
-if __name__ == "__main__":
-    main()
+    logger.info(f"Successfully uploaded topics:\n{"\n".join(successful_topics)}")
+    logger.info(f"Failed to upload topics:\n{"\n".join(failed_topics)}")
+    output_string += f"\nSuccessfully uploaded topics:\n{"\n".join(successful_topics)}\n"
+    output_string += f"Failed to upload topics:\n{"\n".join(failed_topics)}\n"
+    return output_string # Return the output string
+
+
+# if __name__ == "__main__": # Remove this block
+#     parser = argparse.ArgumentParser(description="Upload a video to YouTube.")
+#     parser.add_argument("topic_file", help="Path to the topic file.")
+#     args = parser.parse_args()
+#
+#
+#     upload_youtube(args.topic_file, logger=logger)

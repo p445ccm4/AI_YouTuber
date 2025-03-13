@@ -5,7 +5,7 @@ import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 class VideoCaptioner:
-    def __init__(self, logger=None):
+    def __init__(self, logger:logging.Logger):
         self.logger = logger
         self.pipe = None
 
@@ -43,7 +43,7 @@ class VideoCaptioner:
         transcription = ''.join(e for e in result["text"] if e.isalnum()).lower()
         caption = ''.join(e for e in caption if e.isalnum()).lower()
         comparison = f"\nTranscription:\t{transcription}\nCaption:\t{caption}"
-        self.logger.info(comparison)
+        self.logger.debug(comparison)
         if transcription != caption:
             return False, comparison
 

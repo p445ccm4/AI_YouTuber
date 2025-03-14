@@ -76,8 +76,7 @@ class YTShortsMaker:
             caption = element.get('caption')
             prompt = element.get('prompt')
             voiceover = element.get('voiceover', caption)
-            # is_video = element.get('is_video', False)
-            is_video = False
+            has_words = element.get('has_words', False)
 
             try:
                 speaking_rate = 25
@@ -89,21 +88,15 @@ class YTShortsMaker:
                         speaking_rate=speaking_rate
                     )
 
-                    if is_video:
-                        # 4a. Generate video
-                        self.video_generator.generate_video(
+                    if has_words:
+                        # 4a. Generate freeze video
+                        self.freeze_video_generator.generate_freeze_video_with_words(
                             prompt=prompt,
                             index=index,
-                            output_video_path=f"{self.working_dir}/{index}_temp.mp4"
-                        )
-
-                        # 4b. Interpolate video
-                        self.interpolator.interpolate(
-                            input_video_path=f"{self.working_dir}/{index}_temp.mp4",
-                            output_video_path=f"{self.working_dir}/{index}.mp4"
+                            output_video_path=f"{self.working_dir}/{index}.mp4",
                         )
                     else:
-                        # 5. Generate freeze video
+                        # 4b. Generate freeze video with Gemini
                         self.freeze_video_generator.generate_freeze_video(
                             prompt=prompt,
                             index=index,

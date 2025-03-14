@@ -53,6 +53,58 @@ class FreezeVideoGenerator:
         # Write the video clip to a file
         clip.write_videofile(output_video_path, fps=fps)
         self.logger.info(f"Video saved to {output_video_path}")
+    
+    def generate_freeze_video_with_words(self, prompt, index, output_video_path, fps=20, num_frames=None):
+        output_dir = os.path.dirname(output_video_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        if num_frames is None:
+            if index != -1:
+                audio_path = f"{output_dir}/{index}.wav"
+                audio_clip = moviepy.AudioFileClip(audio_path)
+                num_frames = audio_clip.duration * fps
+                audio_clip.close()
+            else:
+                num_frames = 1 # For Thumbnail
+
+        num_frames = int(num_frames // 4 * 4 + 1)
+        self.logger.info(f"num_frames: {num_frames}")
+
+        from google import genai
+        from google.genai import types
+        from PIL import Image
+        from io import BytesIO
+
+        client = genai.Client()
+
+        contents = ("Create an 720x1280 portrait image. The prompt is: " + prompt)
+
+        for i in range(5):
+            response = client.models.generate_content(
+                model="models/gemini-2.0-flash-exp",
+                contents=contents,
+                config=types.GenerateContentConfig(response_modalities=['Text', 'Image'])
+            )
+
+            for part in response.candidates[0].content.parts:
+                if part.inline_data is not None:
+                    output = Image.open(BytesIO(part.inline_data.data))
+                    w, h = output.size
+                    if w <= h:  # Check if image is portrait (height >= width)
+                        output = output.resize((720, 1280))
+                        break
+            
+            if i == 4:
+                raise Exception("Failed to generate image")
+        
+        # Create a video clip from the frames
+        clip = moviepy.ImageClip(np.array(output)).with_duration(num_frames / fps)
+
+        # Write the video clip to a file
+        clip.write_videofile(output_video_path, fps=fps)
+        self.logger.info(f"Video saved to {output_video_path}")
+    
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

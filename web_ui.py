@@ -34,12 +34,16 @@ def create_demo():
             save_button.click(save_file_content, inputs=[topic_file_output, topic_file_content], outputs=gr.Text("Save Status"))
 
         with gr.Tab("text2YTShorts_batch"):
-            gr.Interface(
+            interface = gr.Interface(
                 fn=lambda topic_file_obj: text2YTShorts_batch.text2YTShorts_batch_from_path(topic_file_obj.name) if topic_file_obj else "No topic file uploaded.",
                 inputs=topic_file_output,
                 outputs=gr.Code(label="Output", language='shell', interactive=True),
-                title="text2YTShorts_batch"
+                title="text2YTShorts_batch",
+                allow_flagging="never"
             )
+            interface.queue()  # Enable queuing
+            stop_btn = gr.Button("Stop")
+            stop_btn.click(fn=None, inputs=None, outputs=None, cancels=interface.queue)
         with gr.Tab("upload_youtube"):
             gr.Interface(
                 fn=lambda topic_file_obj: upload_YouTube.upload_youtube_func(topic_file_obj.name) if topic_file_obj else "No topic file uploaded.",

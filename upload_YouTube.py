@@ -5,7 +5,7 @@ import googleapiclient.discovery
 import googleapiclient.errors
 import googleapiclient.http
 import logging
-# import argparse # Remove argparse
+import argparse
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 TOKEN_FILE = 'token.json'
@@ -56,7 +56,7 @@ class YouTubeUploader:
         video_id = response['id']
         self.logger.info(f"Video uploaded successfully with ID: {video_id}")
 
-def upload_youtube_func(topic_file, logger=None): # Define function, remove argparse
+def upload_youtube_func(topic_file, logger=None):
     output_string = "" # Capture output in a string
     # Configure basic logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -97,14 +97,16 @@ def upload_youtube_func(topic_file, logger=None): # Define function, remove argp
     logger.info(f"Successfully uploaded topics:\n{"\n".join(successful_topics)}")
     logger.info(f"Failed to upload topics:\n{"\n".join(failed_topics)}")
     output_string += f"\nSuccessfully uploaded topics:\n{"\n".join(successful_topics)}\n"
-    output_string += f"Failed to upload topics:\n{"\n".join(failed_topics)}\n"
-    return output_string # Return the output string
+    output_string += f"\nFailed to upload topics:\n{"\n".join(failed_topics)}\n"
+    return output_string 
 
 
-# if __name__ == "__main__": # Remove this block
-#     parser = argparse.ArgumentParser(description="Upload a video to YouTube.")
-#     parser.add_argument("topic_file", help="Path to the topic file.")
-#     args = parser.parse_args()
-#
-#
-#     upload_youtube(args.topic_file, logger=logger)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Upload a video to YouTube.")
+    parser.add_argument("topic_file", help="Path to the topic file.")
+    args = parser.parse_args()
+
+    # Configure basic logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+    upload_youtube_func(args.topic_file, logger=logger)

@@ -35,30 +35,30 @@ def create_demo():
 
         with gr.Tab("text2YTShorts_batch"):
             gr.Interface(
-                fn=lambda topic_file_obj: text2YTShorts_batch.text2YTShorts_batch_func(topic_file_obj.name) if topic_file_obj else "No topic file uploaded.",
+                fn=lambda topic_file_obj: text2YTShorts_batch.text2YTShorts_batch_from_path(topic_file_obj.name) if topic_file_obj else "No topic file uploaded.",
                 inputs=topic_file_output,
-                outputs=gr.Code(label="Output", language='shell'),
+                outputs=gr.Code(label="Output", language='shell', interactive=True),
                 title="text2YTShorts_batch"
             )
         with gr.Tab("upload_youtube"):
             gr.Interface(
                 fn=lambda topic_file_obj: upload_YouTube.upload_youtube_func(topic_file_obj.name) if topic_file_obj else "No topic file uploaded.",
                 inputs=topic_file_output,
-                outputs=gr.Code(label="Output", language='shell'),
+                outputs=gr.Code(label="Output", language='shell', interactive=True),
                 title="upload_youtube"
             )
         with gr.Tab("print_status"):
             gr.Interface(
                 fn=lambda topic_file_obj: ZZZ_print_status.print_status(topic_file_obj.name) if topic_file_obj else "No topic file uploaded.",
                 inputs=topic_file_output,
-                outputs=gr.Code(label="Output", language='shell'),
+                outputs=gr.Code(label="Output", language='shell', interactive=True),
                 title="print_status"
             )
         with gr.Tab("print_titles"):
             gr.Interface(
                 fn=lambda folder_path: ZZZ_print_titles.print_titles(folder_path),
                 inputs=gr.Textbox("inputs/proposals", label="Folder Path"),
-                outputs=gr.Code(label="Output", language='markdown'),
+                outputs=gr.Code(label="Output", language='markdown', interactive=True),
                 title="print_titles"
             )
 

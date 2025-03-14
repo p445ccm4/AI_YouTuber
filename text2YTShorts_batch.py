@@ -8,9 +8,9 @@ from email.mime.text import MIMEText
 import datetime
 import time
 
-def text2YTShorts_batch_func(topic_file, send_email=False): # Define function, remove argparse
+def text2YTShorts_batch_from_path(topic_file_path, send_email=False): 
     output_string = "" # Capture output in a string
-    with open(topic_file, 'r') as f:
+    with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines()]
 
     for line_idx, line in enumerate(lines):
@@ -21,7 +21,7 @@ def text2YTShorts_batch_func(topic_file, send_email=False): # Define function, r
         indices_to_process = [int(i) for i in line[1:]] if len(line) > 1 else None # None if no indices provided
 
         json_file = f"inputs/proposals/{topic}.json"
-        topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
+        topic_file_name = os.path.splitext(os.path.basename(topic_file_path))[0]
         working_dir = f"outputs/{topic_file_name}_{topic}"
         log_file = os.path.join(working_dir, f"{topic}.log")
 

@@ -20,6 +20,6 @@ def print_titles(folder_path="inputs/proposals"):
     return output_string # Return the output string
 
 
-# if __name__ == "__main__": # Remove this block for import
-#     folder_path = "inputs/proposals"
-#     print_titles(folder_path)
+if __name__ == "__main__": 
+    folder_path = "inputs/proposals"
+    print_titles(folder_path)

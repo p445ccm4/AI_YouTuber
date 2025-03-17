@@ -88,15 +88,35 @@ class YTShortsMaker:
                         speaking_rate=speaking_rate
                     )
 
+                    # 4. Get transcription
+                    caption_matched, timed_caption = self.audio_captioner.get_audio_timestamp(
+                        caption=caption,
+                        input_audio_path=f"{self.working_dir}/{index}.wav"
+                    )
+                    if caption_matched:
+                        self.logger.info(f"Successfully matched caption with speaking rate {speaking_rate}")
+                        break
+                    elif speaking_rate > 15:
+                        # Generate slower audio if tiktok captioning is failed
+                        self.logger.warn(f"""Failed to match caption with speaking rate {speaking_rate}.\nRetry audio with slower speaking rate...
+                                         """)
+                        speaking_rate -= 2
+                        continue
+                    else:
+                        raise Exception(f"""
+                                         Failed to match caption with speaking rate {speaking_rate}.\nCaption comparison:
+                                         {timed_caption}
+                                        """)
+
                     if has_words:
-                        # 4a. Generate freeze video
+                        # 5a. Generate freeze video with Gemini
                         self.freeze_video_generator.generate_freeze_video_with_words(
                             prompt=prompt,
                             index=index,
                             output_video_path=f"{self.working_dir}/{index}.mp4",
                         )
                     else:
-                        # 4b. Generate freeze video with Gemini
+                        # 5b. Generate freeze video
                         self.freeze_video_generator.generate_freeze_video(
                             prompt=prompt,
                             index=index,
@@ -104,27 +124,14 @@ class YTShortsMaker:
                         )
 
                     # 6. Add audio and caption to video
-                    caption_matched, caption_comparison = self.audio_captioner.add_audio_and_caption_tiktok_style(
-                        caption=caption,
+                    self.audio_captioner.add_audio_and_caption_tiktok_style(
+                        timed_caption=timed_caption,
                         input_audio_path=f"{self.working_dir}/{index}.wav",
                         input_video_path=f"{self.working_dir}/{index}.mp4",
                         output_video_path=f"{self.working_dir}/{index}_captioned.mp4"
                     )
 
-                    if caption_matched:
-                        self.logger.info(f"Successfully processed iteration with index={index}")
-                        break
-                    elif speaking_rate > 15:
-                        # Generate slower audio if tiktok captioning is failed
-                        self.logger.warn(f"""Failed to match caption with speaking rate {speaking_rate}.\nCaption comparison:
-                                         {caption_comparison}\nRetry audio with slower speaking rate...
-                                         """)
-                        speaking_rate -= 2
-                    else:
-                        raise Exception(f"""
-                                         Failed to match caption with speaking rate {speaking_rate}.\nCaption comparison:
-                                         {caption_comparison}
-                                        """)
+                    self.logger.info(f"Successfully processed iteration with index={index}")
                 
             except Exception as e:
                 trace = traceback.format_exc()

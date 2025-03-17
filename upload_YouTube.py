@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import google_auth_oauthlib
@@ -16,7 +17,7 @@ def authenticate_youtube(client_secrets_file_path):
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
         client_secrets_file_path, SCOPES)
 
-    credentials = flow.run_local_server()
+    credentials = flow.run_local_server(timeout=10)
     youtube = googleapiclient.discovery.build(
         "youtube", "v3", credentials=credentials)
     return youtube
@@ -56,12 +57,16 @@ class YouTubeUploader:
         video_id = response['id']
         self.logger.info(f"Video uploaded successfully with ID: {video_id}")
 
-def upload_youtube_func(topic_file, logger=None):
-    output_string = "" # Capture output in a string
-    # Configure basic logging
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger(__name__)
-    uploader = YouTubeUploader(logger=logger)
+def upload_youtube_func(topic_file, uploader, logger=None):
+    if not logger:
+        # Configure basic logging
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logger = logging.getLogger(__name__)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        string_stream = io.StringIO()
+        string_handler = logging.StreamHandler(string_stream)
+        string_handler.setFormatter(formatter)
+        logger.addHandler(string_handler)
 
     with open(topic_file, 'r') as f:
         topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
@@ -88,17 +93,14 @@ def upload_youtube_func(topic_file, logger=None):
             title=long_title
             )
             successful_topics.append(topic)
-            output_string += f"Successfully uploaded topic: {topic}\n" # Capture output for gradio
         except Exception as e:
             logger.error(f"Failed to upload video for topic {topic}: {e}")
             failed_topics.append(topic)
-            output_string += f"Failed to upload topic: {topic} - {e}\n" # Capture error for gradio
+        finally:
+            yield string_stream.getvalue()
 
     logger.info(f"Successfully uploaded topics:\n{"\n".join(successful_topics)}")
     logger.info(f"Failed to upload topics:\n{"\n".join(failed_topics)}")
-    output_string += f"\nSuccessfully uploaded topics:\n{"\n".join(successful_topics)}\n"
-    output_string += f"\nFailed to upload topics:\n{"\n".join(failed_topics)}\n"
-    return output_string 
 
 
 if __name__ == "__main__":

@@ -3,11 +3,14 @@ import os
 import moviepy
 import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from google import genai
 
 class VideoCaptioner:
     def __init__(self, logger:logging.Logger):
         self.logger = logger
         self.pipe = None
+        with open("inputs/Gemini_API.txt", "r") as f:
+            self.gemini_client = genai.Client(api_key=f.readline().strip())
 
     def _load_model(self):
         if not self.pipe:
@@ -26,11 +29,11 @@ class VideoCaptioner:
             )
             self.logger.info("Whisper model loaded.")
 
-    def add_audio_and_caption_tiktok_style(self, caption: str, input_video_path, input_audio_path, output_video_path):
+    def get_audio_timestamp(self, caption, input_audio_path):
         # Whisper inference
         self._load_model()
         self.pipe.model.to("cuda")
-        result = self.pipe(
+        timed_caption = self.pipe(
             input_audio_path, 
             return_timestamps="word",
             generate_kwargs={
@@ -39,14 +42,35 @@ class VideoCaptioner:
         )
         self.pipe.model.to("cpu")
 
-        # Return False if the transcription is not matched with caption
-        transcription = ''.join(e for e in result["text"] if e.isalnum()).lower()
-        caption = ''.join(e for e in caption if e.isalnum()).lower()
-        comparison = f"\nTranscription:\t{transcription}\nCaption:\t{caption}"
-        self.logger.debug(comparison)
-        if transcription != caption:
+        transcription_alnum = ''.join(e for e in timed_caption["text"] if e.isalnum()).lower()
+        caption_alnum = ''.join(e for e in caption if e.isalnum()).lower()
+        # Return True if the transcription is matched with caption
+        if transcription_alnum == caption_alnum:
+            return True, timed_caption
+        else:
+            comparison = f"\nTranscription:\t{timed_caption['text']}\nCaption:\t{caption}"
             return False, comparison
+        # else:
+        #     # Ask Gemini if the transcription is not matched with caption
+        #     response = self.gemini_client.models.generate_content(
+        #         model="gemini-2.0-flash", 
+        #         contents=f"""I have a transcription model that generated the 
+        #         following text: {timed_caption["text"]}. The script is: {caption}. 
+        #         If they have similar pronounciation and meaning, answer me 'True'. 
+        #         Otherwise, answer me 'False'. For example, 'gonna' and 'going to'
+        #         have very close pronounciation and also same meaning. So, the answer is 'True'.
+        #         'vs' and 'versus' have the same pronounciation and same meaning. So, the answer is also 'True'. 
+        #         However, missing or adding some words are not the same pronounciation.
+        #         So, the answer is 'False'. Having homophones but different meanings are also 'False'.""",
+        #     )
+        #     comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nGemini Response:\t{response}"
+        #     self.logger.warning(comparison)
+        #     if response == "True":
+        #         return True, timed_caption
+        #     else:
+        #         return False, comparison
 
+    def add_audio_and_caption_tiktok_style(self, timed_caption, input_video_path, input_audio_path, output_video_path):
         # Load video and audio
         video_clip = moviepy.VideoFileClip(input_video_path)
         audio_clip = moviepy.AudioFileClip(input_audio_path)
@@ -54,7 +78,7 @@ class VideoCaptioner:
         # Create text clips for each chunk
         text_clips = []
         current_batch_text, current_batch_duration, current_batch_start = [], 0.0, 0.0
-        for chunk in result["chunks"]:
+        for chunk in timed_caption["chunks"]:
             text = chunk["text"]
             start, end = chunk["timestamp"]
             if not end:
@@ -98,7 +122,6 @@ class VideoCaptioner:
         final_clip.write_videofile(output_video_path, ffmpeg_params=["-hide_banner", "-loglevel", "error"])
 
         self.logger.info(f"Successfully added timed captions to video: {output_video_path}")
-        return True, comparison
 
     def add_audio_and_caption(self, input_video_path, output_video_path, caption=None, input_audio_path=None, title=False):
         # Load video

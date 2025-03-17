@@ -5,11 +5,17 @@ import moviepy
 import argparse
 import os
 import logging
+from google import genai
+from google.genai import types
+from PIL import Image
+from io import BytesIO
 
 class FreezeVideoGenerator:
     def __init__(self, logger=None):
         self.logger = logger
         self.pipe = None  # Initialize pipe to None, model is not loaded yet
+        with open("inputs/Gemini_API.txt", "r") as f:
+            self.gemini_client = genai.Client(api_key=f.readline().strip())
 
     def _load_model(self):
         if self.pipe is None: # Check if self.pipe is None
@@ -71,18 +77,11 @@ class FreezeVideoGenerator:
         num_frames = int(num_frames // 4 * 4 + 1)
         self.logger.info(f"num_frames: {num_frames}")
 
-        from google import genai
-        from google.genai import types
-        from PIL import Image
-        from io import BytesIO
-
-        client = genai.Client()
-
         contents = ("Create an 720x1280 portrait image. The prompt is: " + prompt)
 
         for i in range(5):
-            response = client.models.generate_content(
-                model="models/gemini-2.0-flash-exp",
+            response = self.gemini_client.models.generate_content(
+                model="gemini-2.0-flash-exp-image-generation",
                 contents=contents,
                 config=types.GenerateContentConfig(response_modalities=['Text', 'Image'])
             )

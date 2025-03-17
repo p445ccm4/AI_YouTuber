@@ -2,14 +2,14 @@ import os
 import traceback
 import text2YTShorts_single
 import logging
-# import argparse # Remove argparse
+import argparse
 import smtplib
 from email.mime.text import MIMEText
 import datetime
 import time
+import io
 
-def text2YTShorts_batch_from_path(topic_file_path, send_email=False): 
-    output_string = "" # Capture output in a string
+def text2YTShorts_batch(topic_file_path:str, send_email=False): 
     with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines()]
 
@@ -28,11 +28,15 @@ def text2YTShorts_batch_from_path(topic_file_path, send_email=False):
         start_time = time.time()
         os.makedirs(working_dir, exist_ok=True)
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        handler = logging.FileHandler(log_file)
-        handler.setFormatter(formatter)
+        string_stream = io.StringIO()
+        string_handler = logging.StreamHandler(string_stream)
+        string_handler.setFormatter(formatter)
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
         logger = logging.getLogger(topic)
         logger.setLevel(logging.DEBUG)
-        logger.addHandler(handler)
+        logger.addHandler(file_handler)
+        logger.addHandler(string_handler)
         logger.info(f"Starting processing for {topic}")
 
         status = "Failed"
@@ -78,14 +82,14 @@ def text2YTShorts_batch_from_path(topic_file_path, send_email=False):
                     logger.info("Email sent successfully")
                 except Exception as e:
                     logger.info(f"Email sending failed: {e}")
-        output_string += f"Processing topic: {topic}, Status: {status}\n" # Capture output for gradio
-    return output_string # Return the output string
+            
+            yield string_stream.getvalue()
+            
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process topics from a file.")
+    parser.add_argument("topic_file_path", help="Path to the topic file.")
+    parser.add_argument("--email", action="store_true", help="Send email notification when finish processing each video.")
+    args = parser.parse_args()
 
-# if __name__ == "__main__": # Remove this block
-#     parser = argparse.ArgumentParser(description="Process topics from a file.")
-#     parser.add_argument("topic_file", help="Path to the topic file.")
-#     parser.add_argument("--email", action="store_true", help="Send email notification when finish processing each video.")
-#     args = parser.parse_args()
-#
-#     text2YTShorts_batch(args.topic_file, args.email)
+    text2YTShorts_batch(args.topic_file_path, args.email)

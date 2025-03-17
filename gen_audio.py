@@ -3,9 +3,9 @@ import os
 import logging
 
 import torchaudio
-from Zonos.zonos.model import Zonos
-from Zonos.zonos.conditioning import make_cond_dict
-from Zonos.zonos.utils import DEFAULT_DEVICE as device
+from zonos.model import Zonos
+from zonos.conditioning import make_cond_dict
+from zonos.utils import DEFAULT_DEVICE as device
 
 class AudioGenerator:
     def __init__(self, logger=None, zonos_model_path="./models/Zonos-v0.1-hybrid", reference_audio=None):
@@ -36,6 +36,7 @@ class AudioGenerator:
     def generate_audio(self, caption, output_audio_path, speaking_rate=20):
         if os.path.exists(output_audio_path):
             os.remove(output_audio_path)
+        assert caption != "" and caption is not None, "Caption/Voiceover cannot be empty."
 
         self._load_model() # Load model here
 

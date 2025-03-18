@@ -55,10 +55,11 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False):
             trace = traceback.format_exc() or "probably keyboard interruption"
             logger.error(f"Error processing {topic}: \n{trace}")
         finally:
-            end_time = time.time()
-            processing_time = end_time - start_time
             if send_email:
                 # Email sending
+                end_time = time.time()
+                processing_time = end_time - start_time
+                
                 with open("inputs/email_config.txt", "r") as f:
                     sender_email = f.readline().strip()
                     sender_password = f.readline().strip()
@@ -84,6 +85,8 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False):
                     logger.info(f"Email sending failed: {e}")
             
             yield string_stream.getvalue()
+    
+    yield "Done for all topics."
             
 
 if __name__ == "__main__":

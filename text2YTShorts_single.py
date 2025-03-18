@@ -195,7 +195,7 @@ def main():
     logger = logging.getLogger(__name__)
 
     # Authenticate YouTube Data API
-    youtube = upload_YouTube.authenticate_youtube("inputs/YouTube_Upload_API.json") if args.upload else None
+    youtube = upload_YouTube.authenticate_youtube() if args.upload else None
 
     shorts_maker = YTShortsMaker(
         json_file=args.json_file, 

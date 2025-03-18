@@ -1,31 +1,40 @@
+import argparse
 import io
 import json
 import os
-import google_auth_oauthlib
+import google_auth_oauthlib.flow
 import googleapiclient.discovery
 import googleapiclient.errors
 import googleapiclient.http
 import logging
-import argparse
-
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
-TOKEN_FILE = 'token.json'
-
-def authenticate_youtube(client_secrets_file_path):
-    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
-
-    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        client_secrets_file_path, SCOPES)
-
-    credentials = flow.run_local_server(timeout=10)
-    youtube = googleapiclient.discovery.build(
-        "youtube", "v3", credentials=credentials)
-    return youtube
+import webbrowser
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 
 class YouTubeUploader:
-    def __init__(self, youtube=None, client_secrets_file_path="inputs/YouTube_Upload_API.json", logger=None):
-        self.logger = logger
-        self.youtube = youtube or authenticate_youtube(client_secrets_file_path)
+    SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+    CLIENT_SECRETS_FILE_PATH = "inputs/YouTube_Upload_API.json"
+    REDIRECT_URL = "http://localhost:8080/"
+
+    def __init__(self, logger=None):
+        self.logger = logger or self._setup_logger()
+        self._authenticate_youtube()
+
+    def _setup_logger(self):
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logger = logging.getLogger(__name__)
+        return logger
+    
+    def _authenticate_youtube(self):
+        os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
+        flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+            self.CLIENT_SECRETS_FILE_PATH, self.SCOPES)
+
+        credentials = flow.run_local_server(timeout=10)
+        self.youtube = googleapiclient.discovery.build(
+            "youtube", "v3", credentials=credentials)
 
     def upload_video(self, input_video_path, title, description, tags, category_id="24", privacy_status="unlisted"):
         self.logger.info(f"Starting video upload of '{input_video_path}': '{title}'")
@@ -36,7 +45,7 @@ class YouTubeUploader:
                 "description": description,
                 "tags": tags if tags is not None else []
             },
-            "status":{
+            "status": {
                 "privacyStatus": privacy_status
             }
         }
@@ -51,64 +60,57 @@ class YouTubeUploader:
         while response is None:
             status, response = request.next_chunk()
             if status:
-                progress_percentage = int(status.progress()*100)
+                progress_percentage = int(status.progress() * 100)
                 self.logger.info(f"Upload {progress_percentage}%")
 
         video_id = response['id']
         self.logger.info(f"Video uploaded successfully with ID: {video_id}")
 
-def upload_youtube_func(topic_file, uploader, logger=None):
-    if not logger:
-        # Configure basic logging
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        logger = logging.getLogger(__name__)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        string_stream = io.StringIO()
-        string_handler = logging.StreamHandler(string_stream)
-        string_handler.setFormatter(formatter)
-        logger.addHandler(string_handler)
+    def upload_from_topic_file(self, topic_file):
+        with open(topic_file, 'r') as f:
+            topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
-    with open(topic_file, 'r') as f:
-        topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
+        successful_topics = []
+        failed_topics = []
+        for i, topic in enumerate(topics):
+            json_file = f"inputs/proposals/{topic}.json"
+            topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
+            working_dir = f"outputs/{topic_file_name}_{topic}"
 
-    successful_topics = []
-    failed_topics = []
-    for topic in topics:
-        json_file = f"inputs/proposals/{topic}.json"
-        topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
-        working_dir = f"outputs/{topic_file_name}_{topic}"
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+                description = data.get('description', "This content is made by me, HiLo World. All right reserved. Contact me if you want to use my content.")
+                tags = data.get('tags', None)
+                thumbnail = data.get('thumbnail')
+                long_title = thumbnail.get('long_title')
 
-        with open(json_file, 'r') as f:
-            data = json.load(f)
-            description = data.get('description', "This content is made by me, HiLo World. All right reserved. Contact me if you want to use my content.")
-            tags = data.get('tags', None)
-            thumbnail = data.get('thumbnail')
-            long_title = thumbnail.get('long_title')
+            try:
+                self.upload_video(
+                    input_video_path=f"{working_dir}/final.mp4",
+                    description=description,
+                    tags=tags,
+                    title=long_title
+                )
+                successful_topics.append(topic)
+            except Exception as e:
+                self.logger.error(f"Failed to upload video for topic {topic}: {e}")
+                failed_topics.append(topic)
+            finally:
+                yield f"Progress: {i+1}/{len(topics)} videos"
 
-        try:
-            uploader.upload_video(
-            input_video_path=f"{working_dir}/final.mp4",
-            description=description,
-            tags=tags,
-            title=long_title
-            )
-            successful_topics.append(topic)
-        except Exception as e:
-            logger.error(f"Failed to upload video for topic {topic}: {e}")
-            failed_topics.append(topic)
-        finally:
-            yield string_stream.getvalue()
+        self.logger.info(f"Successfully uploaded topics:\n{"\n".join(successful_topics)}")
+        self.logger.info(f"Failed to upload topics:\n{"\n".join(failed_topics)}")
+        yield
 
-    logger.info(f"Successfully uploaded topics:\n{"\n".join(successful_topics)}")
-    logger.info(f"Failed to upload topics:\n{"\n".join(failed_topics)}")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Upload a video to YouTube.")
+def main():
+    parser = argparse.ArgumentParser(description="Upload videos to YouTube from a topic file.")
     parser.add_argument("topic_file", help="Path to the topic file.")
     args = parser.parse_args()
 
-    # Configure basic logging
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger(__name__)
-    upload_youtube_func(args.topic_file, logger=logger)
+    uploader = YouTubeUploader()
+
+    for log_message in uploader.upload_from_topic_file(args.topic_file):
+        print(log_message, end='\n')
+
+if __name__ == "__main__":
+    main()

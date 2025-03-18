@@ -1,6 +1,8 @@
 import os
 import gradio as gr
 import time
+import logging
+import io
 
 # --- Import Functions Directly ---
 import ZZZ_print_status
@@ -42,21 +44,30 @@ def create_demo():
                 submit_btn="Generate",
                 stop_btn="Stop"
             )
-        with gr.Tab("upload_youtube"):
-            authenticate_button = gr.Button("Authenticate YouTube")
-            uploader = gr.State()
-            upload_button = gr.Button("Upload all uncommented videos")
 
-            authenticate_button.click(
-                fn=lambda x: upload_YouTube.YouTubeUploader(x),
-                inputs=uploader,
-                outputs=uploader,
-                )
+        with gr.Tab("upload_youtube"):
+            def run_upload(topic_file):
+                logger = logging.getLogger(__name__)
+                logger.setLevel(logging.INFO)
+                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                string_stream = io.StringIO()
+                string_handler = logging.StreamHandler(string_stream)
+                string_handler.setFormatter(formatter)
+                logger.addHandler(string_handler)
+
+                uploader = upload_YouTube.YouTubeUploader(logger=logger)
+                for message in uploader.upload_from_topic_file(topic_file):
+                    yield string_stream.getvalue() + message
+
+                yield string_stream.getvalue()
+
+            upload_button = gr.Button("Upload Videos")
             upload_button.click(
-                fn=upload_YouTube.upload_youtube_func,
-                inputs=[topic_file_path, uploader],
-                outputs=gr.Textbox(label="Output", max_lines=30),
+                fn=run_upload,
+                inputs=topic_file_path,
+                outputs=gr.Textbox(label="Output", max_lines=30)
             )
+
         with gr.Tab("print_status"):
             gr.Interface(
                 fn=ZZZ_print_status.print_status,
@@ -66,6 +77,7 @@ def create_demo():
                 flagging_mode="never",
                 submit_btn="Print",
             )
+
         with gr.Tab("print_titles"):
             gr.Interface(
                 fn=ZZZ_print_titles.print_titles,

@@ -1,9 +1,10 @@
 import argparse
-import os
 import moviepy
 import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from google import genai
+from openai import OpenAI
+import json
 
 class VideoCaptioner:
     def __init__(self, logger:logging.Logger):
@@ -11,6 +12,8 @@ class VideoCaptioner:
         self.pipe = None
         with open("inputs/Gemini_API.txt", "r") as f:
             self.gemini_client = genai.Client(api_key=f.readline().strip())
+        with open("inputs/DeepSeek_API.txt", "r") as f:
+            self.client = OpenAI(api_key=f.readline().strip(), base_url="https://api.deepseek.com")
 
     def _load_model(self):
         if not self.pipe:
@@ -48,27 +51,51 @@ class VideoCaptioner:
         if transcription_alnum == caption_alnum:
             return True, timed_caption
         else:
-            comparison = f"\nTranscription:\t{timed_caption['text']}\nCaption:\t{caption}"
-            return False, comparison
-        # else:
-        #     # Ask Gemini if the transcription is not matched with caption
-        #     response = self.gemini_client.models.generate_content(
-        #         model="gemini-2.0-flash", 
-        #         contents=f"""I have a transcription model that generated the 
-        #         following text: {timed_caption["text"]}. The script is: {caption}. 
-        #         If they have similar pronounciation and meaning, answer me 'True'. 
-        #         Otherwise, answer me 'False'. For example, 'gonna' and 'going to'
-        #         have very close pronounciation and also same meaning. So, the answer is 'True'.
-        #         'vs' and 'versus' have the same pronounciation and same meaning. So, the answer is also 'True'. 
-        #         However, missing or adding some words are not the same pronounciation.
-        #         So, the answer is 'False'. Having homophones but different meanings are also 'False'.""",
-        #     )
-        #     comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nGemini Response:\t{response}"
-        #     self.logger.warning(comparison)
-        #     if response == "True":
-        #         return True, timed_caption
-        #     else:
-        #         return False, comparison
+            # Ask DeepSeek if the transcription is not matched with caption
+            response = self.client.chat.completions.create(
+                model="deepseek-reasoner",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": """
+                            I am a YouTube Shorts content creator. 
+                            I am using a audio-to-text model to form word-level timed-transcription for the caption,
+                            which means the model has returned the exact start and end time for each word I spoke in a audio.
+                            However, the model is not accurate enough to fully detect what I am saying. 
+                            I would like you to correct the words and add punctuations to the timed-transcription.
+                            If the transcription is far away from the script, misses words or has extra words, answer me with "failed".
+                            If the transcription has small problems with spelling, homophones or alias, 
+                            answer me with "modified {...}", i.e. "modified" appeneded with your corrected dictionary.
+                            Do not add other extra things nor changing the timestamp.
+                            Answer me with "failed" if you are not certain.
+                            Example input:
+                            {
+                                script: "INFJs are insightful and deeply caring.",
+                                timed_caption: {"text": " NFJS are insightful and deeply caring.", "chunks": [{"text": " NFJS", "timestamp": (0.06, 0.62)}, {"text": " are", "timestamp": (0.62, 0.76)}, {"text": " insightful", "timestamp": (0.76, 1.22)}, {"text": " and", "timestamp": (1.22, 1.44)}, {"text": " deeply", "timestamp": (1.44, 1.74)}, {"text": " caring.", "timestamp": (1.74, None)}]}
+                            }
+                            Expected response:
+                            "modified {"text": "INFJs are insightful and deeply caring.", "chunks": [{"text": "INFJs", "timestamp": (0.06, 0.62)}, {"text": " are", "timestamp": (0.62, 0.76)}, {"text": " insightful", "timestamp": (0.76, 1.22)}, {"text": " and", "timestamp": (1.22, 1.44)}, {"text": " deeply", "timestamp": (1.44, 1.74)}, {"text": " caring.", "timestamp": (1.74, None)}]}"
+                        """
+                    },
+                    {
+                        "role": "user",
+                        "content": json.dumps(
+                            {
+                            "script": caption,
+                            "timed_caption": timed_caption
+                            }
+                        )
+                    },
+                ],
+                stream=False
+            ).choices[0].message.content 
+            
+            comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
+            self.logger.debug(comparison)
+            if response.startswith("modified"):
+                return True, json.loads(response.removeprefix("modified "))
+            else:
+                return False, comparison
 
     def add_audio_and_caption_tiktok_style(self, timed_caption, input_video_path, input_audio_path, output_video_path):
         # Load video and audio

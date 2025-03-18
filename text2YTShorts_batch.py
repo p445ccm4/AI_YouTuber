@@ -48,7 +48,7 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False):
                 logger=logger
             )
             shorts_maker.run()
-            status = "Successfully"
+            status = "Successful"
             trace = None
             logger.info(f"Finished processing {topic} successfully")
         except Exception as e:
@@ -84,7 +84,7 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False):
                 except Exception as e:
                     logger.info(f"Email sending failed: {e}")
             
-            yield string_stream.getvalue()
+            yield string_stream.getvalue() + f"Topic '{topic}' processing {status}."
     
     yield "Done for all topics."
             

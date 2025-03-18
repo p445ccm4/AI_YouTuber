@@ -2,14 +2,12 @@ import os
 import json
 import argparse
 
-def check_videos(folder_path):
-
+def check_videos(folder_path, topic):
     final_video = os.path.join(folder_path, f"final.mp4")
     music_file = os.path.join(folder_path, f"music.wav")
 
     if os.path.exists(final_video):
-        # print("#", os.path.basename(folder_path))
-        return "finished", os.path.basename(folder_path)
+        return "finished", topic
     
     failed_indices = []
     if not os.path.exists(music_file):
@@ -21,9 +19,8 @@ def check_videos(folder_path):
             failed_indices.append(str(i))
 
     if failed_indices:
-        # print(os.path.basename(folder_path), ' '.join(failed_indices))
-        return "partially done", os.path.basename(folder_path) + ' ' + ' '.join(failed_indices)
-    return "not started", os.path.basename(folder_path) # Added return for not started case
+        return "partially done", topic + ' ' + ' '.join(failed_indices)
+    return "not started", topic
 
 
 def print_status(input_topics, outputs_path = "outputs", proposal_path = "inputs/proposals"):
@@ -31,12 +28,13 @@ def print_status(input_topics, outputs_path = "outputs", proposal_path = "inputs
         topics = f.readlines()
 
     prefix = os.path.basename(input_topics).split(".")[0]
-    folder_names = [f"{prefix}_{topic.split()[0].strip()}" for topic in topics if topic.strip() and not topic.strip().startswith("#")]
+    topics = [topic.split()[0].strip() for topic in topics if topic.strip() and not topic.strip().startswith("#")]
     status_all = {}
-    for folder_name in folder_names:
+    for topic in topics:
+        folder_name = f"{prefix}_{topic}"
         folder_path = os.path.join(outputs_path, folder_name)
         if os.path.isdir(folder_path):
-            status, line = check_videos(folder_path)
+            status, line = check_videos(folder_path, topic)
             if status == "finished":
                 with open(f"{proposal_path}/{folder_name.split("_", maxsplit=1)[-1]}.json", 'r') as f:
                     title = json.load(f).get("thumbnail", {}).get("long_title")
@@ -45,15 +43,15 @@ def print_status(input_topics, outputs_path = "outputs", proposal_path = "inputs
         else:
             status_all["not started"] = [*status_all.get("not started", []), folder_name]
 
-    output_string = "" # Capture output in a string
+    output_string = ""
     for status, lines in status_all.items():
         output_string += f"\n# {status} jobs:\n\n"
         output_string += "\n".join(lines) + "\n"
-    return output_string # Return the output string instead of printing directly
+    return output_string
 
 if __name__ == "__main__": 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_topics")
+    parser.add_argument("input_topics")
     args = parser.parse_args()
 
-    print_status(args.input_topics)
+    print(print_status(args.input_topics))

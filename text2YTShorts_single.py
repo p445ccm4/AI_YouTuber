@@ -108,30 +108,30 @@ class YTShortsMaker:
                                          {timed_caption}
                                         """)
 
-                    if has_words:
-                        # 5a. Generate freeze video with Gemini
-                        self.freeze_video_generator.generate_freeze_video_with_words(
-                            prompt=prompt,
-                            index=index,
-                            output_video_path=f"{self.working_dir}/{index}.mp4",
-                        )
-                    else:
-                        # 5b. Generate freeze video
-                        self.freeze_video_generator.generate_freeze_video(
-                            prompt=prompt,
-                            index=index,
-                            output_video_path=f"{self.working_dir}/{index}.mp4",
-                        )
-
-                    # 6. Add audio and caption to video
-                    self.audio_captioner.add_audio_and_caption_tiktok_style(
-                        timed_caption=timed_caption,
-                        input_audio_path=f"{self.working_dir}/{index}.wav",
-                        input_video_path=f"{self.working_dir}/{index}.mp4",
-                        output_video_path=f"{self.working_dir}/{index}_captioned.mp4"
+                if has_words:
+                    # 5a. Generate freeze video with Gemini
+                    self.freeze_video_generator.generate_freeze_video_with_words(
+                        prompt=prompt,
+                        index=index,
+                        output_video_path=f"{self.working_dir}/{index}.mp4",
+                    )
+                else:
+                    # 5b. Generate freeze video
+                    self.freeze_video_generator.generate_freeze_video(
+                        prompt=prompt,
+                        index=index,
+                        output_video_path=f"{self.working_dir}/{index}.mp4",
                     )
 
-                    self.logger.info(f"Successfully processed iteration with index={index}")
+                # 6. Add audio and caption to video
+                self.audio_captioner.add_audio_and_caption_tiktok_style(
+                    timed_caption=timed_caption,
+                    input_audio_path=f"{self.working_dir}/{index}.wav",
+                    input_video_path=f"{self.working_dir}/{index}.mp4",
+                    output_video_path=f"{self.working_dir}/{index}_captioned.mp4"
+                )
+
+                self.logger.info(f"Successfully processed iteration with index={index}")
                 
             except Exception as e:
                 trace = traceback.format_exc()

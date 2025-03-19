@@ -68,6 +68,7 @@ class VideoCaptioner:
                             answer me with "modified {...}", i.e. "modified" appeneded with your corrected dictionary.
                             Do not add other extra things nor changing the timestamp.
                             Answer me with "failed" if you are not certain.
+                            Make sure the syntax is prefectly correct. It has to be a dict trailling exactly one space after "modified".
                             Example input:
                             {
                                 script: "INFJs are insightful and deeply caring.",
@@ -188,6 +189,10 @@ class VideoCaptioner:
         
         # Write the output video file
         video_clip.write_videofile(output_video_path, ffmpeg_params=["-hide_banner", "-loglevel", "error"])
+
+        # Save the thumbnail
+        if title:
+            video_clip.save_frame(output_video_path.replace(".mp4", ".png"), t=0, with_mask=False)
 
         # Delete the original video
         # os.remove(input_video_path)

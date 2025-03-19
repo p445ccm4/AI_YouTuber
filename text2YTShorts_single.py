@@ -6,7 +6,7 @@ import traceback
 import gen_audio, gen_video, gen_freeze_video, interpolate, audio_caption, concat, gen_music, upload_YouTube
 
 class YTShortsMaker:
-    def __init__(self, json_file, working_dir, indices_to_process=None, logger=None, youtube=None):
+    def __init__(self, json_file, working_dir, indices_to_process=None, logger=None, upload=False):
         self.json_file = json_file
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
@@ -17,14 +17,14 @@ class YTShortsMaker:
         self.audio_captioner = audio_caption.VideoCaptioner(logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
         self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)
-        self.yt_uploader = upload_YouTube.YouTubeUploader(logger=self.logger, youtube=youtube) if youtube else None
+        self.yt_uploader = upload_YouTube.YouTubeUploader(logger=self.logger) if upload else None
 
         if "_women_" in json_file or "Zodiac_" in json_file or "MBTI_" in json_file:
-            reference_audio = "inputs/reference_audio_woman.wav"
+            reference_audio_path = "inputs/reference_audio_woman.wav"
         else:
             # "Motivation_", "_men_"
-            reference_audio = "inputs/reference_audio_man.wav"
-        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio=reference_audio)
+            reference_audio_path = "inputs/reference_audio_man.wav"
+        self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio_path=reference_audio_path)
 
     def run(self):
         os.makedirs(self.working_dir, exist_ok=True)
@@ -35,7 +35,6 @@ class YTShortsMaker:
             script = data.get('script', data.get('proposal'))
             thumbnail = data.get('thumbnail')
             music = data.get('music', None)
-            long_title = thumbnail.get('long_title')
             short_title = thumbnail.get('short_title')
             prompt = thumbnail.get('prompt')
         
@@ -98,7 +97,8 @@ class YTShortsMaker:
                         break
                     elif speaking_rate > 15:
                         # Generate slower audio if tiktok captioning is failed
-                        self.logger.warn(f"""Failed to match caption with speaking rate {speaking_rate}.\nRetry audio with slower speaking rate...
+                        self.logger.warn(f"""Failed to match caption with speaking rate {speaking_rate}.\nCaption comparison:
+                                         {timed_caption}\nRetry audio with slower speaking rate...
                                          """)
                         speaking_rate -= 2
                         continue
@@ -161,10 +161,17 @@ class YTShortsMaker:
                 )
 
                 if self.yt_uploader:
+                    long_title = thumbnail.get('long_title')
+                    description = data.get('description', "This content is made by me, HiLo World. All right reserved. Contact me if you want to use my content.")
+                    tags = data.get('tags', None)
                     # 11. Upload to YouTube
                     self.yt_uploader.upload_video(
                         input_video_path=f"{self.working_dir}/final.mp4",
-                        title=long_title
+                        input_thumbnail_path=f"{self.working_dir}/-1_captioned.png",
+                        title=long_title,
+                        publish_date=None,
+                        description=description,
+                        tags=tags,
                     )
 
                 self.logger.info(f"{self.working_dir} successfully processed")
@@ -194,15 +201,12 @@ def main():
     logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
-    # Authenticate YouTube Data API
-    youtube = upload_YouTube.authenticate_youtube() if args.upload else None
-
     shorts_maker = YTShortsMaker(
         json_file=args.json_file, 
         working_dir=args.working_dir, 
         indices_to_process=args.indices, 
         logger=logger, 
-        youtube=youtube
+        upload=args.upload
         )
     shorts_maker.run()
 

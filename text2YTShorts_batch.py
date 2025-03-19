@@ -8,12 +8,26 @@ from email.mime.text import MIMEText
 import datetime
 import time
 import io
+import tqdm
+import gradio as gr
 
-def text2YTShorts_batch(topic_file_path:str, send_email=False): 
+def text2YTShorts_batch(topic_file_path:str, send_email=False, interrupt_flag_path=None, progress=gr.Progress(track_tqdm=True)): 
+    if interrupt_flag_path:
+        if os.path.exists(interrupt_flag_path):
+            os.remove(interrupt_flag_path)
+        with open(interrupt_flag_path, "w") as f:
+            f.write("running")
+
     with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines()]
 
-    for line_idx, line in enumerate(lines):
+    for line_idx, line in tqdm.tqdm(enumerate(lines)):
+        if interrupt_flag_path and os.path.exists(interrupt_flag_path):
+                with open(interrupt_flag_path, "r") as f:
+                    if f.readline().strip() == "stop":
+                        yield "Process Interrupted"
+                        exit()
+
         if not line or line.strip().startswith("#"):
             continue
         line = line.split()

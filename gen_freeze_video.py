@@ -45,7 +45,7 @@ class FreezeVideoGenerator:
 
         self.pipe = self.pipe.to('cuda') # Move model to GPU for generation
         output = self.pipe(
-            prompt=prompt,
+            prompt=prompt + "no nude bodies, no nipples.",
             height=1280,
             width=720,
             num_inference_steps=40,

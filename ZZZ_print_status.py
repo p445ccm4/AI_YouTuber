@@ -2,21 +2,25 @@ import os
 import json
 import argparse
 
-def check_videos(folder_path, topic):
-    final_video = os.path.join(folder_path, f"final.mp4")
-    music_file = os.path.join(folder_path, f"music.wav")
+def check_videos(folder_path, topic, n_caption):
+    
+    final_video_path = os.path.join(folder_path, f"final.mp4")
+    music_path = os.path.join(folder_path, f"music.wav")
+    thumbnail_path = os.path.join(folder_path, f"-1_captioned.png")
 
-    if os.path.exists(final_video):
+    if os.path.exists(final_video_path) and os.path.exists(thumbnail_path):
         return "finished", topic
     
     failed_indices = []
-    if not os.path.exists(music_file):
+    if not os.path.exists(music_path):
         failed_indices.append("99")
 
-    for i in range(-1, 26):
+    for i in range(-1, n_caption):
         captioned_file = os.path.join(folder_path, f"{i}_captioned.mp4")
         if not os.path.exists(captioned_file):
             failed_indices.append(str(i))
+    if not os.path.exists(thumbnail_path) and "-1" not in failed_indices:
+        failed_indices.append("-1")
 
     if failed_indices:
         return "partially done", topic + ' ' + ' '.join(failed_indices)
@@ -33,11 +37,13 @@ def print_status(input_topics, outputs_path = "outputs", proposal_path = "inputs
     for topic in topics:
         folder_name = f"{prefix}_{topic}"
         folder_path = os.path.join(outputs_path, folder_name)
+        with open(f"{proposal_path}/{folder_name.split("_", maxsplit=1)[-1]}.json", 'r') as f:
+            data = json.load(f)
+            title = data.get("thumbnail", {}).get("long_title")
+            n_caption = len(data.get("script"))
         if os.path.isdir(folder_path):
-            status, line = check_videos(folder_path, topic)
+            status, line = check_videos(folder_path, topic, n_caption)
             if status == "finished":
-                with open(f"{proposal_path}/{folder_name.split("_", maxsplit=1)[-1]}.json", 'r') as f:
-                    title = json.load(f).get("thumbnail", {}).get("long_title")
                 line += f" \"{title}\""
             status_all[status] = [*status_all.get(status, []), line]
         else:

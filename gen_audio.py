@@ -8,20 +8,12 @@ from zonos.conditioning import make_cond_dict
 from zonos.utils import DEFAULT_DEVICE as device
 
 class AudioGenerator:
-    def __init__(self, logger=None, zonos_model_path="./models/Zonos-v0.1-hybrid", reference_audio=None):
+    def __init__(self, logger=None, zonos_model_path="./models/Zonos-v0.1-hybrid", reference_audio_path=None):
         self.logger = logger
         self.zonos_model_path = zonos_model_path
-        self.reference_audio = reference_audio
+        self.reference_audio_path = reference_audio_path
         self.speaker_embedding = None
         self.model = None
-
-        # Initialize speaker embedding if reference audio is provided (and model is loaded lazily later)
-        if os.path.exists(reference_audio):
-            wav, sr = torchaudio.load(reference_audio)
-            self._load_model() # load temporarily to get embedding
-            self.model.to(device)
-            self.speaker_embedding = self.model.make_speaker_embedding(wav, sr)
-            self.model.to('cpu')
 
     def _load_model(self):
         if self.model is None:
@@ -30,7 +22,13 @@ class AudioGenerator:
             model_path = os.path.join(self.zonos_model_path, "model.safetensors")
             self.model = Zonos.from_local(config_path, model_path, device=device).to('cpu')
             self.model.eval()  # Set the model to evaluation mode
-            self.logger.info("Zonos model loaded.")
+
+        if self.speaker_embedding is None and self.reference_audio_path:
+            self.logger.info("Making speaker embedding...")
+            wav, sr = torchaudio.load(self.reference_audio_path)
+            self.model.to(device)
+            self.speaker_embedding = self.model.make_speaker_embedding(wav, sr)
+            self.model.to('cpu')
 
 
     def generate_audio(self, caption, output_audio_path, speaking_rate=20):

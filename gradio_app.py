@@ -71,6 +71,30 @@ def create_demo():
                     os.remove(interrupt_flag_path)
                 with open(interrupt_flag_path, "w") as f:
                     f.write("stop")
+                gr.Warning("Process will stop after processing this video. Please wait...")
+
+            def run_text2YTShorts_batch(topic_file_path, send_email, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
+                if interrupt_flag_path:
+                    if os.path.exists(interrupt_flag_path):
+                        os.remove(interrupt_flag_path)
+                    with open(interrupt_flag_path, "w") as f:
+                        f.write("running")
+                logger = logging.getLogger(__name__)
+                logger.setLevel(logging.DEBUG)
+                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                string_stream = io.StringIO()
+                string_handler = logging.StreamHandler(string_stream)
+                string_handler.setFormatter(formatter)
+                logger.addHandler(string_handler)
+
+                for _ in text2YTShorts_batch.text2YTShorts_batch(topic_file_path, send_email, logger=logger):
+                    with open(interrupt_flag_path, "r") as f:
+                        flag = f.readline().strip()
+                    yield string_stream.getvalue()
+                    if flag == "stop":
+                        logger.error("Process Interrupted")
+                        break
+                yield string_stream.getvalue()
             
             with gr.Row():
                 send_email_checkbox = gr.Checkbox(label="Send Email", value=False)
@@ -80,7 +104,7 @@ def create_demo():
             text2YTShorts_batch_progress = gr.Textbox(label="Progress Bar")
             text2YTShorts_batch_outputs = gr.Textbox(label="Output", lines=30, max_lines=30)
             text2YTShorts_batch_generate_button.click(
-                fn=text2YTShorts_batch.text2YTShorts_batch,
+                fn=run_text2YTShorts_batch,
                 inputs=[topic_file_path, send_email_checkbox, interrupt_flag_path],
                 outputs=text2YTShorts_batch_outputs,
                 show_progress_on=text2YTShorts_batch_progress,
@@ -91,9 +115,9 @@ def create_demo():
             )
             
         with gr.Tab("Upload to YouTube (Local Machine Only)"):
-            def run_upload(topic_file, publish_date, video_per_day):
+            def run_upload(topic_file_path, publish_date, video_per_day, progress=gr.Progress(track_tqdm=True)):
                 logger = logging.getLogger(__name__)
-                logger.setLevel(logging.INFO)
+                logger.setLevel(logging.DEBUG)
                 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
                 string_stream = io.StringIO()
                 string_handler = logging.StreamHandler(string_stream)
@@ -101,13 +125,13 @@ def create_demo():
                 logger.addHandler(string_handler)
 
                 uploader = upload_YouTube.YouTubeUploader(logger=logger)
-                for message in uploader.upload_from_topic_file(topic_file, publish_date, video_per_day):
-                    yield string_stream.getvalue() + message
+                for _ in uploader.upload_from_topic_file(topic_file_path, publish_date, int(video_per_day)):
+                    yield string_stream.getvalue()
                 yield string_stream.getvalue()
 
             with gr.Row():
-                publish_date = gr.Textbox(label="Publish Date (YYYY-MM-DD)", placeholder=datetime.date.today().strftime('%Y-%m-%d'))
-                video_per_day = gr.Textbox(label="Video per day", placeholder="3")
+                publish_date = gr.Textbox(datetime.date.today().strftime('%Y-%m-%d'), label="Publish Date (YYYY-MM-DD)")
+                video_per_day = gr.Textbox("3", label="Video per day")
                 upload_button = gr.Button("Upload Videos", variant="primary")
             upload_progress = gr.Textbox(label="Progress Bar")
             upload_outputs = gr.Textbox(label="Output", lines=30, max_lines=30)

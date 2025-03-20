@@ -78,14 +78,14 @@ class YouTubeUploader:
         except Exception as e:
             self.logger.info(f"Error setting thumbnail: {e}")
 
-    def upload_from_topic_file(self, topic_file, publish_date, video_per_day, progress=gr.Progress(track_tqdm=True)):
+    def upload_from_topic_file(self, topic_file, publish_date, video_per_day):
         with open(topic_file, 'r') as f:
             topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
         publish_datetime_utc = datetime.datetime.strptime(publish_date, '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         successful_topics = []
         failed_topics = []
-        for i, topic in tqdm.tqdm(enumerate(topics)):
+        for i, topic in enumerate(tqdm.tqdm(topics)):
             json_file = f"inputs/proposals/{topic}.json"
             topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
             working_dir = f"outputs/{topic_file_name}_{topic}"
@@ -121,11 +121,13 @@ class YouTubeUploader:
 def main():
     parser = argparse.ArgumentParser(description="Upload videos to YouTube from a topic file.")
     parser.add_argument("topic_file", help="Path to the topic file.")
+    parser.add_argument("publish_date", help="First date to publish the video (YYYY-MM-DD).")
+    parser.add_argument("video_per_day", type=int, help="Number of video to upload per day.")
     args = parser.parse_args()
 
     uploader = YouTubeUploader()
 
-    for log_message in uploader.upload_from_topic_file(args.topic_file):
+    for log_message in uploader.upload_from_topic_file(args.topic_file, args.publish_date, args.video_per_day):
         print(log_message, end='\n')
 
 if __name__ == "__main__":

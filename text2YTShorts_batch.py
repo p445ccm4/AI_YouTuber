@@ -7,27 +7,13 @@ import smtplib
 from email.mime.text import MIMEText
 import datetime
 import time
-import io
 import tqdm
-import gradio as gr
 
-def text2YTShorts_batch(topic_file_path:str, send_email=False, interrupt_flag_path=None, progress=gr.Progress(track_tqdm=True)): 
-    if interrupt_flag_path:
-        if os.path.exists(interrupt_flag_path):
-            os.remove(interrupt_flag_path)
-        with open(interrupt_flag_path, "w") as f:
-            f.write("running")
-
+def text2YTShorts_batch(topic_file_path:str, send_email=False, logger=None): 
     with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines()]
 
     for line_idx, line in tqdm.tqdm(enumerate(lines)):
-        if interrupt_flag_path and os.path.exists(interrupt_flag_path):
-                with open(interrupt_flag_path, "r") as f:
-                    if f.readline().strip() == "stop":
-                        yield "Process Interrupted"
-                        exit()
-
         if not line or line.strip().startswith("#"):
             continue
         line = line.split()
@@ -41,16 +27,13 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, interrupt_flag_pa
 
         start_time = time.time()
         os.makedirs(working_dir, exist_ok=True)
+        if not logger:
+            logger = logging.getLogger(topic)
+            logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        string_stream = io.StringIO()
-        string_handler = logging.StreamHandler(string_stream)
-        string_handler.setFormatter(formatter)
         file_handler = logging.FileHandler(log_file)
         file_handler.setFormatter(formatter)
-        logger = logging.getLogger(topic)
-        logger.setLevel(logging.DEBUG)
         logger.addHandler(file_handler)
-        logger.addHandler(string_handler)
         logger.info(f"Starting processing for {topic}")
 
         status = "Failed"
@@ -97,10 +80,8 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, interrupt_flag_pa
                     logger.info("Email sent successfully")
                 except Exception as e:
                     logger.info(f"Email sending failed: {e}")
-            
-            yield string_stream.getvalue() + f"Topic '{topic}' processing {status}."
-    
-    yield "Done for all topics."
+            yield
+    yield
             
 
 if __name__ == "__main__":

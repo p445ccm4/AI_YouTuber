@@ -64,18 +64,19 @@ class VideoCaptioner:
                             However, the model is not accurate enough to fully detect what I am saying. 
                             I would like you to correct the words and add punctuations to the timed-transcription.
                             If the transcription is far away from the script, misses words or has extra words, answer me with "failed".
-                            If the transcription has small problems with spelling, homophones or alias, 
+                            If the transcription has small problems with spelling, homophones, short form or alias, 
                             answer me with "modified {...}", i.e. "modified" appeneded with your corrected dictionary.
-                            Do not add other extra things nor changing the timestamp.
+                            Do not make up extra words. Do not change the timestamp unless you are merging words.
+                            Modify punctuations to match the original script.
                             Answer me with "failed" if you are not certain.
                             Make sure the syntax is prefectly correct. It has to be a dict trailling exactly one space after "modified".
-                            Example input:
+                            Example of merging words:
                             {
-                                script: "INFJs are insightful and deeply caring.",
-                                timed_caption: {"text": " NFJS are insightful and deeply caring.", "chunks": [{"text": " NFJS", "timestamp": (0.06, 0.62)}, {"text": " are", "timestamp": (0.62, 0.76)}, {"text": " insightful", "timestamp": (0.76, 1.22)}, {"text": " and", "timestamp": (1.22, 1.44)}, {"text": " deeply", "timestamp": (1.44, 1.74)}, {"text": " caring.", "timestamp": (1.74, None)}]}
+                                script: "When ESTJs are mad, they won't hide it.",
+                                timed_caption: {"text": "When ESTJs are mad, they will not hide it", "chunks": [{"text": " When", "timestamp": (0.06, 0.62)}, {"text": " ESTJs", "timestamp": (0.62, 0.76)}, {"text": " are", "timestamp": (0.76, 1.22)}, {"text": " mad,", "timestamp": (1.22, 1.44)}, {"text": " they", "timestamp": (1.44, 1.74)}, {"text": " will", "timestamp": (1.74, 1.95)}, {"text": " not", "timestamp": (1.95, 2.08)}, {"text": " hide", "timestamp": (2.08, 2.20)}, {"text": " it.", "timestamp": (2.20, None)}]}
                             }
                             Expected response:
-                            "modified {"text": "INFJs are insightful and deeply caring.", "chunks": [{"text": "INFJs", "timestamp": (0.06, 0.62)}, {"text": " are", "timestamp": (0.62, 0.76)}, {"text": " insightful", "timestamp": (0.76, 1.22)}, {"text": " and", "timestamp": (1.22, 1.44)}, {"text": " deeply", "timestamp": (1.44, 1.74)}, {"text": " caring.", "timestamp": (1.74, None)}]}"
+                            "modified {"text": "When ESTJs are mad, they won't hide it", "chunks": [{"text": " When", "timestamp": (0.06, 0.62)}, {"text": " ESTJs", "timestamp": (0.62, 0.76)}, {"text": " are", "timestamp": (0.76, 1.22)}, {"text": " mad,", "timestamp": (1.22, 1.44)}, {"text": " they", "timestamp": (1.44, 1.74)}, {"text": " won't", "timestamp": (1.74, 2.08)}, {"text": " hide", "timestamp": (2.08, 2.20)}, {"text": " it.", "timestamp": (2.20, None)}]}"
                         """
                     },
                     {
@@ -193,9 +194,6 @@ class VideoCaptioner:
         # Save the thumbnail
         if title:
             video_clip.save_frame(output_video_path.replace(".mp4", ".png"), t=0, with_mask=False)
-
-        # Delete the original video
-        # os.remove(input_video_path)
         
         self.logger.info(f"Successfully added audio and caption to video: {output_video_path}")
 

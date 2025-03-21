@@ -95,9 +95,11 @@ class VideoCaptioner:
             comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
             self.logger.debug(comparison)
             if response.startswith("modified"):
-                return True, json.loads(response.removeprefix("modified "))
-            else:
-                return False, comparison
+                try:
+                    return True, json.loads(response.removeprefix("modified "))
+                except json.JSONDecodeError:
+                    self.logger.error(f"Failed to parse modified JSON")
+            return False, comparison
 
     def add_audio_and_caption_tiktok_style(self, timed_caption, input_video_path, input_audio_path, output_video_path):
         # Load video and audio

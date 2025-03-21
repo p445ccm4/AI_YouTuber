@@ -42,6 +42,7 @@ class YTShortsMaker:
             self.logger.debug(f"Skipping thumbnail generation as -1 is not in the provided indices.")
         else:
             try:
+                yield
                 # 1. Generate thumbnail
                 self.freeze_video_generator.generate_freeze_video(
                     prompt=prompt,
@@ -50,6 +51,7 @@ class YTShortsMaker:
                     num_frames=5
                 )
 
+                yield
                 # 2. Add caption to thumbnail
                 self.audio_captioner.add_audio_and_caption(
                     input_audio_path=None,
@@ -80,6 +82,7 @@ class YTShortsMaker:
             try:
                 speaking_rate = 25
                 while True:
+                    yield
                     # 3. Generate audio
                     self.audio_generator.generate_audio(
                         caption=voiceover,
@@ -87,6 +90,7 @@ class YTShortsMaker:
                         speaking_rate=speaking_rate
                     )
 
+                    yield
                     # 4. Get transcription
                     caption_matched, timed_caption = self.audio_captioner.get_audio_timestamp(
                         caption=caption,
@@ -109,6 +113,7 @@ class YTShortsMaker:
                                         """)
 
                 if has_words:
+                    yield
                     # 5a. Generate freeze video with Gemini
                     self.freeze_video_generator.generate_freeze_video_with_words(
                         prompt=prompt,
@@ -116,6 +121,7 @@ class YTShortsMaker:
                         output_video_path=f"{self.working_dir}/{index}.mp4",
                     )
                 else:
+                    yield
                     # 5b. Generate freeze video
                     self.freeze_video_generator.generate_freeze_video(
                         prompt=prompt,
@@ -123,6 +129,7 @@ class YTShortsMaker:
                         output_video_path=f"{self.working_dir}/{index}.mp4",
                     )
 
+                yield
                 # 6. Add audio and caption to video
                 self.audio_captioner.add_audio_and_caption_tiktok_style(
                     timed_caption=timed_caption,
@@ -142,9 +149,11 @@ class YTShortsMaker:
             self.logger.info("All iterations completed successfully!")
 
             try:
+                yield
                 # 7. Concatenate videos
                 self.concatenator.concatenate_videos()
                     
+                yield
                 # 8. Generate background music
                 if self.indices_to_process is not None and 99 not in self.indices_to_process and os.path.exists(f"{self.working_dir}/music.wav"):
                     self.logger.debug(f"Skipping index 99 as it's not in the provided indices.")
@@ -153,7 +162,8 @@ class YTShortsMaker:
                         music, f"{self.working_dir}/music.wav")
                     pass
 
-                # 10. Add background music
+                yield
+                # 9. Add background music
                 self.bg_music_adder.add_background_music(
                     input_video_path=f"{self.working_dir}/concat.mp4",
                     music_path=f"{self.working_dir}/music.wav",
@@ -164,7 +174,8 @@ class YTShortsMaker:
                     long_title = thumbnail.get('long_title')
                     description = data.get('description', "This content is made by me, HiLo World. All right reserved. Contact me if you want to use my content.")
                     tags = data.get('tags', None)
-                    # 11. Upload to YouTube
+                    yield
+                    # 10. Upload to YouTube
                     self.yt_uploader.upload_video(
                         input_video_path=f"{self.working_dir}/final.mp4",
                         input_thumbnail_path=f"{self.working_dir}/-1_captioned.png",

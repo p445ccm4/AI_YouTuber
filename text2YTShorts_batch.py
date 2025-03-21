@@ -44,7 +44,7 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, logger=None):
                 indices_to_process,
                 logger=logger
             )
-            shorts_maker.run()
+            yield from shorts_maker.run()
             status = "Successful"
             trace = None
             logger.info(f"Finished processing {topic} successfully")

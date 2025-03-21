@@ -26,44 +26,44 @@ def save_file_content(path, content):
 # --- Gradio Interface ---
 def create_demo():
     with gr.Blocks() as demo:
-        with gr.Column(): # Stays at the top
-            topic_file_path = gr.Textbox(label="Enter topic file name: f\"inputs/{topic_file_basename}.topics\"", value="inputs/20250306.topics")
-            load_topic_file_button = gr.Button("Load Topic File")
-            topic_file_content = gr.Code(label="Topic File Content", language='shell', interactive=True, max_lines=30)
-            save_topic_file_button = gr.Button("Save Topic File")
+        topics_path = gr.Textbox(label="Enter topic file name: f\"inputs/{topics_basename}.topics\"", value="inputs/20250306.topics")
+        with gr.Row():
+            with gr.Column(): 
+                load_topics_button = gr.Button("Load Topic File", variant="primary")
+                topics_content = gr.Code(label="Topic File Content", language='shell', interactive=True, max_lines=30)
+                save_topics_button = gr.Button("Save Topic File")
 
-            load_topic_file_button.click(load_file_content, inputs=topic_file_path, outputs=topic_file_content)
-            save_topic_file_button.click(save_file_content, inputs=[topic_file_path, topic_file_content], outputs=gr.Textbox(label="Last Update"))
+                load_topics_button.click(load_file_content, inputs=topics_path, outputs=topics_content)
+                save_topics_button.click(save_file_content, inputs=[topics_path, topics_content], outputs=gr.Textbox(label="Last Update"))
+            with gr.Column():
+                print_status_button = gr.Button("Print Status", variant="primary")
+                print_status_outputs = gr.Code(language='shell', interactive=True, max_lines=30)
+                
+                print_status_button.click(fn=ZZZ_print_status.print_status,inputs=topics_path, outputs=print_status_outputs)
 
         with gr.Tab("Browse and Edit Proposals"):
-            def load_proposal_file_paths(topic_file_path, input_dir="inputs/proposals"):
+            def load_proposal_paths(topics_path, input_dir="inputs/proposals"):
                 """Browses files in a directory and returns a list of filenames."""
-                with open(topic_file_path, 'r') as f:
+                with open(topics_path, 'r') as f:
                     topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
-                json_files = [os.path.join(input_dir, f"{topic}.json") for topic in topics]
-                return gr.Dropdown(choices=json_files)
+                json_paths = [os.path.join(input_dir, f"{topic}.json") for topic in topics]
+                return gr.Dropdown(choices=json_paths)
 
-            with gr.Row():
-                proposal_file_path = gr.Dropdown(None, label="Proposal file path")
-            with gr.Row():
-                proposal_content = gr.Code(label="Proposal Content",language="json", max_lines=20)
-            with gr.Row():
-                save_proposal_file_button = gr.Button("Save Changes")
+            proposal_path = gr.Dropdown(None, label="Proposal file path")
+            proposal_content = gr.Code(label="Proposal Content",language="json", max_lines=20)
+            save_proposal_button = gr.Button("Save Changes", variant="primary")
             
-            load_topic_file_button.click(load_proposal_file_paths, inputs=topic_file_path, outputs=proposal_file_path)
-            save_topic_file_button.click(load_proposal_file_paths, inputs=topic_file_path, outputs=proposal_file_path)
-            proposal_file_path.change(load_file_content, inputs=proposal_file_path, outputs=proposal_content)
-            save_proposal_file_button.click(save_file_content, inputs=[proposal_file_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
+            load_topics_button.click(load_proposal_paths, inputs=topics_path, outputs=proposal_path)
+            save_topics_button.click(load_proposal_paths, inputs=topics_path, outputs=proposal_path)
+            proposal_path.change(load_file_content, inputs=proposal_path, outputs=proposal_content)
+            save_proposal_button.click(save_file_content, inputs=[proposal_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
 
         with gr.Tab("Create New Proposal"):
-            with gr.Row():
-                new_proposal_file_path = gr.Textbox(label="New proposal file path")
-            with gr.Row():
-                new_proposal_content = gr.Code(label="Proposal Content", language="json", max_lines=20)
-            with gr.Row():
-                create_proposal_button = gr.Button("Create Proposal")
+            new_proposal_path = gr.Textbox(label="New proposal file path")
+            new_proposal_content = gr.Code(label="Proposal Content", language="json", max_lines=20)
+            create_proposal_button = gr.Button("Create Proposal", variant="primary")
 
-            create_proposal_button.click(save_file_content, inputs=[new_proposal_file_path, new_proposal_content], outputs=gr.Textbox(label="Last Update"))
+            create_proposal_button.click(save_file_content, inputs=[new_proposal_path, new_proposal_content], outputs=gr.Textbox(label="Last Update"))
         
         with gr.Tab("text2YTShorts_batch"):
             def interrupt(interrupt_flag_path):
@@ -73,7 +73,7 @@ def create_demo():
                     f.write("stop")
                 gr.Warning("Process will stop after processing this video. Please wait...")
 
-            def run_text2YTShorts_batch(topic_file_path, send_email, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
+            def run_text2YTShorts_batch(topics_path, send_email, interrupt_flag_path): #, progress=gr.Progress(track_tqdm=True)): # have bug on nested tqdm
                 if interrupt_flag_path:
                     if os.path.exists(interrupt_flag_path):
                         os.remove(interrupt_flag_path)
@@ -87,7 +87,7 @@ def create_demo():
                 string_handler.setFormatter(formatter)
                 logger.addHandler(string_handler)
 
-                for _ in text2YTShorts_batch.text2YTShorts_batch(topic_file_path, send_email, logger=logger):
+                for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, logger=logger):
                     with open(interrupt_flag_path, "r") as f:
                         flag = f.readline().strip()
                     yield string_stream.getvalue()
@@ -105,17 +105,62 @@ def create_demo():
             text2YTShorts_batch_outputs = gr.Textbox(label="Output", lines=30, max_lines=30)
             text2YTShorts_batch_generate_button.click(
                 fn=run_text2YTShorts_batch,
-                inputs=[topic_file_path, send_email_checkbox, interrupt_flag_path],
+                inputs=[topics_path, send_email_checkbox, interrupt_flag_path],
                 outputs=text2YTShorts_batch_outputs,
                 show_progress_on=text2YTShorts_batch_progress,
-                show_progress="full"
+                show_progress="full",
+                scroll_to_output=True
             )
             text2YTShorts_batch_stop_button.click(
                 interrupt, inputs=interrupt_flag_path, outputs=None
             )
+
+        with gr.Tab("Browse Videos (Local Machine Only)"):
+            def load_topics(topics_path):
+                with open(topics_path, 'r') as f:
+                    topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
+                return gr.Dropdown(value=None, choices=topics)
+            
+            def load_video_paths(topics_path, topic, output_dir="outputs"):
+                prefix = os.path.basename(topics_path).split(".")[0]
+                topic_dir = os.path.join(output_dir, f"{prefix}_{topic}")
+                video_paths = []
+                final_video_path = os.path.join(topic_dir, "final.mp4")
+                if os.path.exists(final_video_path):
+                    video_paths.append(final_video_path)
+                for i in range(-1, 25):
+                    sub_video_path = os.path.join(topic_dir, f"{i}_captioned.mp4")
+                    if os.path.exists(sub_video_path):
+                        video_paths.append(sub_video_path)
+                return gr.Dropdown(value=None, choices=video_paths), video_paths
+            
+            def change_video_path(current_video_path, video_paths:list, mode):
+                if current_video_path:
+                    current_idx = video_paths.index(current_video_path)
+                    offset = 1 if mode=="Next" else -1
+                    current_idx = (current_idx + offset) % len(video_paths)
+                    return video_paths[current_idx]
+                else:
+                    return video_paths[0]
+            
+            with gr.Row():
+                topic = gr.Dropdown(None, label="Topic")
+                video_path = gr.Dropdown(None, label="Video Path", scale=2)
+                with gr.Column():
+                    back_video_button = gr.Button("Back")
+                    next_video_button = gr.Button("Next")
+            video_player = gr.Video()
+            video_paths = gr.State([])
+
+            topic.change(fn=load_video_paths, inputs=[topics_path, topic], outputs=[video_path, video_paths])
+            video_path.change(fn=lambda path: gr.Video(path, height="100vh"), inputs=video_path, outputs=video_player)
+            load_topics_button.click(load_topics, inputs=topics_path, outputs=topic)
+            save_topics_button.click(load_topics, inputs=topics_path, outputs=topic)
+            next_video_button.click(change_video_path, inputs=[video_path, video_paths, next_video_button], outputs=video_path)
+            back_video_button.click(change_video_path, inputs=[video_path, video_paths, back_video_button], outputs=video_path)
             
         with gr.Tab("Upload to YouTube (Local Machine Only)"):
-            def run_upload(topic_file_path, publish_date, video_per_day, progress=gr.Progress(track_tqdm=True)):
+            def run_upload(topics, publish_date, video_per_day, progress=gr.Progress(track_tqdm=True)):
                 logger = logging.getLogger(__name__)
                 logger.setLevel(logging.DEBUG)
                 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -125,7 +170,7 @@ def create_demo():
                 logger.addHandler(string_handler)
 
                 uploader = upload_YouTube.YouTubeUploader(logger=logger)
-                for _ in uploader.upload_from_topic_file(topic_file_path, publish_date, int(video_per_day)):
+                for _ in uploader.upload_from_topic_file(topics, publish_date, int(video_per_day)):
                     yield string_stream.getvalue()
                 yield string_stream.getvalue()
 
@@ -137,20 +182,11 @@ def create_demo():
             upload_outputs = gr.Textbox(label="Output", lines=30, max_lines=30)
             upload_button.click(
                 fn=run_upload,
-                inputs=[topic_file_path, publish_date, video_per_day],
+                inputs=[topics_path, publish_date, video_per_day],
                 outputs=upload_outputs,
                 show_progress="full",
-                show_progress_on=upload_progress
-            )
-
-        with gr.Tab("Print Status"):
-            gr.Interface(
-                fn=ZZZ_print_status.print_status,
-                inputs=topic_file_path,
-                outputs=gr.Code(label="Output", language='shell', interactive=True),
-                title="print_status",
-                flagging_mode="never",
-                submit_btn="Print",
+                show_progress_on=upload_progress,
+                scroll_to_output=True
             )
 
         with gr.Tab("Print Titles"):

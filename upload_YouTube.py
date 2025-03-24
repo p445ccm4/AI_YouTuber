@@ -74,7 +74,7 @@ class YouTubeUploader:
                 media_body=googleapiclient.http.MediaFileUpload(input_thumbnail_path)
             )
             thumbnail_response = request_thumbnail.execute()
-            self.logger.info(f"Thumbnail set successfully: {thumbnail_response}")
+            self.logger.info(f"Thumbnail set successfully")
         except Exception as e:
             self.logger.info(f"Error setting thumbnail: {e}")
 

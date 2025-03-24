@@ -80,6 +80,7 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, logger=None):
                     logger.info("Email sent successfully")
                 except Exception as e:
                     logger.info(f"Email sending failed: {e}")
+            logger.removeHandler(file_handler)
             yield
     yield
             

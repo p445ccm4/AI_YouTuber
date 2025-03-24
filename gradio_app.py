@@ -4,6 +4,7 @@ import time
 import logging
 import io
 import datetime
+import gradio_client
 
 # --- Import Functions Directly ---
 import ZZZ_print_status
@@ -16,56 +17,76 @@ def load_file_content(path):
         with open(path, 'r') as f:
             content = f.read()
         return content
-    return ""
+    else:
+        return "File not found"
 
 def save_file_content(path, content):
     with open(path, 'w') as f:
         f.write(content)
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
+def load_proposal_paths(topics_path, input_dir="inputs/proposals"):
+    """Browses files in a directory and returns a list of filenames."""
+    with open(topics_path, 'r') as f:
+        topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
+    json_paths = [os.path.join(input_dir, f"{topic}.json") for topic in topics]
+    return gr.Dropdown(value=json_paths[0], choices=json_paths)
+
+def load_topics(topics_path):
+    with open(topics_path, 'r') as f:
+        topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
+    return gr.Dropdown(value=topics[0], choices=topics), topics
+
 # --- Gradio Interface ---
 def create_demo():
-    with gr.Blocks() as demo:
-        topics_path = gr.Textbox(label="Enter topic file name: f\"inputs/{topics_basename}.topics\"", value="inputs/20250306.topics")
+    with gr.Blocks(title="AI YTB") as demo:
+        input_dir = "inputs"
+        topics_path = gr.Dropdown(label="Topic file name", choices=sorted([os.path.join(input_dir, filename) for filename in os.listdir(input_dir) if filename.endswith(".topics")], reverse=True))
         with gr.Row():
             with gr.Column(): 
                 load_topics_button = gr.Button("Load Topic File", variant="primary")
                 topics_content = gr.Code(label="Topic File Content", language='shell', interactive=True, max_lines=30)
-                save_topics_button = gr.Button("Save Topic File")
+                save_topics_button = gr.Button("Save Topic File", variant="primary")
+                save_topics_outputs = gr.Textbox(label="Last Update")
 
-                load_topics_button.click(load_file_content, inputs=topics_path, outputs=topics_content)
-                save_topics_button.click(save_file_content, inputs=[topics_path, topics_content], outputs=gr.Textbox(label="Last Update"))
             with gr.Column():
                 print_status_button = gr.Button("Print Status", variant="primary")
-                print_status_outputs = gr.Code(language='shell', interactive=True, max_lines=30)
+                print_status_outputs = gr.Code(label="Current Status", language='shell', interactive=True, max_lines=30)
+                apply_status_button = gr.Button("Copy to left", variant="primary")
                 
-                print_status_button.click(fn=ZZZ_print_status.print_status,inputs=topics_path, outputs=print_status_outputs)
+            apply_status_button.click(fn=lambda x: x, inputs=print_status_outputs, outputs=topics_content)
+            print_status_button.click(fn=ZZZ_print_status.print_status,inputs=topics_path, outputs=print_status_outputs)
 
-        with gr.Tab("Browse and Edit Proposals"):
-            def load_proposal_paths(topics_path, input_dir="inputs/proposals"):
-                """Browses files in a directory and returns a list of filenames."""
-                with open(topics_path, 'r') as f:
-                    topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
-                json_paths = [os.path.join(input_dir, f"{topic}.json") for topic in topics]
-                return gr.Dropdown(choices=json_paths)
-
-            proposal_path = gr.Dropdown(None, label="Proposal file path")
-            proposal_content = gr.Code(label="Proposal Content",language="json", max_lines=20)
-            save_proposal_button = gr.Button("Save Changes", variant="primary")
+        with gr.Tab("Create or Edit Proposals"):
+            def ask_LLM(proposal_content, modified_proposal_content, LLM_input):
+                proposal_content = modified_proposal_content or proposal_content
+                with open("inputs/Proposal_System_Prompt.txt", "r") as f:
+                    system_prompt = f.read()
+                #TODO: Check if DeepSeek has system prompt
+                message = "\n\n".join([system_prompt, LLM_input, modified_proposal_content])
+                client = gradio_client.Client("http://127.0.0.1:7860/")
+                result, _ = client.predict(
+                        message=message,
+                        api_name="/chat"
+                )
+                return result
+            with gr.Row():
+                with gr.Column():
+                    proposal_path = gr.Dropdown(None, label="Proposal file path")
+                    proposal_content = gr.Code(label="Proposal Content",language="json", max_lines=20)
+                    save_proposal_button = gr.Button("Save Proposal", variant="primary")
+                with gr.Column():
+                    LM_input = gr.Textbox(label="Ask LLM to modify the proposal")
+                    modified_proposal_content = gr.Code(None, label="Modified Proposal Content", language="json", max_lines=20)
+                    ask_llm_button = gr.Button("Ask LLM", variant="primary")
+                    apply_llm_button = gr.Button("Copy to left", variant="primary")
             
-            load_topics_button.click(load_proposal_paths, inputs=topics_path, outputs=proposal_path)
-            save_topics_button.click(load_proposal_paths, inputs=topics_path, outputs=proposal_path)
+            ask_llm_button.click(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LM_input], outputs=modified_proposal_content)
+            apply_llm_button.click(fn=lambda x: x, inputs=modified_proposal_content, outputs=proposal_content)
             proposal_path.change(load_file_content, inputs=proposal_path, outputs=proposal_content)
             save_proposal_button.click(save_file_content, inputs=[proposal_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
-
-        with gr.Tab("Create New Proposal"):
-            new_proposal_path = gr.Textbox(label="New proposal file path")
-            new_proposal_content = gr.Code(label="Proposal Content", language="json", max_lines=20)
-            create_proposal_button = gr.Button("Create Proposal", variant="primary")
-
-            create_proposal_button.click(save_file_content, inputs=[new_proposal_path, new_proposal_content], outputs=gr.Textbox(label="Last Update"))
         
-        with gr.Tab("text2YTShorts_batch"):
+        with gr.Tab("Process Text-to-YTShorts Batch"):
             def interrupt(interrupt_flag_path):
                 if os.path.exists(interrupt_flag_path):
                     os.remove(interrupt_flag_path)
@@ -94,7 +115,7 @@ def create_demo():
                     if flag == "stop":
                         logger.error("Process Interrupted")
                         break
-                yield string_stream.getvalue()
+                yield string_stream.getvalue() + "Process Ended"
             
             with gr.Row():
                 send_email_checkbox = gr.Checkbox(label="Send Email", value=False)
@@ -115,12 +136,16 @@ def create_demo():
                 interrupt, inputs=interrupt_flag_path, outputs=None
             )
 
-        with gr.Tab("Browse Videos (Local Machine Only)"):
-            def load_topics(topics_path):
-                with open(topics_path, 'r') as f:
-                    topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
-                return gr.Dropdown(value=None, choices=topics)
-            
+        with gr.Tab("Browse Videos"):
+            def next_choice(current_choice, all_choices:list):
+                if current_choice:
+                    current_idx = all_choices.index(current_choice)
+                    current_idx = (current_idx + 1) % len(all_choices)
+                    return all_choices[current_idx]
+                else:
+                    return all_choices[0]
+                
+
             def load_video_paths(topics_path, topic, output_dir="outputs"):
                 prefix = os.path.basename(topics_path).split(".")[0]
                 topic_dir = os.path.join(output_dir, f"{prefix}_{topic}")
@@ -132,32 +157,22 @@ def create_demo():
                     sub_video_path = os.path.join(topic_dir, f"{i}_captioned.mp4")
                     if os.path.exists(sub_video_path):
                         video_paths.append(sub_video_path)
-                return gr.Dropdown(value=None, choices=video_paths), video_paths
-            
-            def change_video_path(current_video_path, video_paths:list, mode):
-                if current_video_path:
-                    current_idx = video_paths.index(current_video_path)
-                    offset = 1 if mode=="Next" else -1
-                    current_idx = (current_idx + offset) % len(video_paths)
-                    return video_paths[current_idx]
-                else:
-                    return video_paths[0]
-            
+                return gr.Dropdown(value=video_paths[0], choices=video_paths), video_paths
+
             with gr.Row():
-                topic = gr.Dropdown(None, label="Topic")
-                video_path = gr.Dropdown(None, label="Video Path", scale=2)
+                current_topic = gr.Dropdown(None, label="Topic")
+                current_video_path = gr.Dropdown(None, label="Video Path", scale=2)
                 with gr.Column():
-                    back_video_button = gr.Button("Back")
-                    next_video_button = gr.Button("Next")
+                    next_topic_button = gr.Button("Next Topic")
+                    next_video_button = gr.Button("Next Video")
             video_player = gr.Video()
             video_paths = gr.State([])
+            topics = gr.State([])
 
-            topic.change(fn=load_video_paths, inputs=[topics_path, topic], outputs=[video_path, video_paths])
-            video_path.change(fn=lambda path: gr.Video(path, height="100vh"), inputs=video_path, outputs=video_player)
-            load_topics_button.click(load_topics, inputs=topics_path, outputs=topic)
-            save_topics_button.click(load_topics, inputs=topics_path, outputs=topic)
-            next_video_button.click(change_video_path, inputs=[video_path, video_paths, next_video_button], outputs=video_path)
-            back_video_button.click(change_video_path, inputs=[video_path, video_paths, back_video_button], outputs=video_path)
+            current_topic.change(fn=load_video_paths, inputs=[topics_path, current_topic], outputs=[current_video_path, video_paths])
+            current_video_path.change(fn=lambda path: gr.Video(path, height="100vh"), inputs=current_video_path, outputs=video_player)
+            next_video_button.click(next_choice, inputs=[current_video_path, video_paths], outputs=current_video_path)
+            next_topic_button.click(next_choice, inputs=[current_topic, topics], outputs=current_topic)
             
         with gr.Tab("Upload to YouTube (Local Machine Only)"):
             def run_upload(topics, publish_date, video_per_day, progress=gr.Progress(track_tqdm=True)):
@@ -198,9 +213,28 @@ def create_demo():
                 flagging_mode="never",
                 submit_btn="Print",
             )
+        
+        load_topics_button.click(
+            load_file_content, inputs=topics_path, outputs=topics_content
+        ).then(
+            load_proposal_paths, inputs=topics_path, outputs=proposal_path
+        ).then(
+            load_topics, inputs=topics_path, outputs=[current_topic, topics]
+        )
+        save_topics_button.click(
+            save_file_content, inputs=[topics_path, topics_content], outputs=save_topics_outputs
+        ).then(
+            load_proposal_paths, inputs=topics_path, outputs=proposal_path
+        ).then(
+            load_topics, inputs=topics_path, outputs=[current_topic, topics]
+        )
 
     return demo
 
 if __name__ == "__main__":
     demo = create_demo()
-    demo.launch(share=True)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=1388,
+        share=True
+        )

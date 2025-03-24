@@ -8,6 +8,9 @@ def check_videos(folder_path, topic, n_caption):
     music_path = os.path.join(folder_path, f"music.wav")
     thumbnail_path = os.path.join(folder_path, f"-1_captioned.png")
 
+    if not os.path.exists(folder_path):
+        return "not started", topic
+
     if os.path.exists(final_video_path) and os.path.exists(thumbnail_path):
         return "finished", topic
     
@@ -24,7 +27,6 @@ def check_videos(folder_path, topic, n_caption):
 
     if failed_indices:
         return "partially done", topic + ' ' + ' '.join(failed_indices)
-    return "not started", topic
 
 
 def print_status(input_topics, outputs_path = "outputs", proposal_path = "inputs/proposals"):
@@ -41,13 +43,11 @@ def print_status(input_topics, outputs_path = "outputs", proposal_path = "inputs
             data = json.load(f)
             title = data.get("thumbnail", {}).get("long_title")
             n_caption = len(data.get("script"))
-        if os.path.isdir(folder_path):
-            status, line = check_videos(folder_path, topic, n_caption)
-            if status == "finished":
-                line += f" \"{title}\""
-            status_all[status] = [*status_all.get(status, []), line]
-        else:
-            status_all["not started"] = [*status_all.get("not started", []), folder_name]
+
+        status, line = check_videos(folder_path, topic, n_caption)
+        if status == "finished":
+            line += f" \"{title}\""
+        status_all[status] = [*status_all.get(status, []), line]
 
     output_string = ""
     for status, lines in status_all.items():

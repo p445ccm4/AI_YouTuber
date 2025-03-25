@@ -1,4 +1,5 @@
 import argparse
+import gradio_client
 import moviepy
 import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
@@ -52,45 +53,20 @@ class VideoCaptioner:
             return True, timed_caption
         else:
             # Ask DeepSeek if the transcription is not matched with caption
-            response = self.client.chat.completions.create(
-                model="deepseek-reasoner",
-                messages=[
-                    {
-                        "role": "system", 
-                        "content": """
-                            I am a YouTube Shorts content creator. 
-                            I am using a audio-to-text model to form word-level timed-transcription for the caption,
-                            which means the model has returned the exact start and end time for each word I spoke in a audio.
-                            However, the model is not accurate enough to fully detect what I am saying. 
-                            I would like you to correct the words and add punctuations to the timed-transcription.
-                            If the transcription is far away from the script, misses words or has extra words, answer me with "failed".
-                            If the transcription has small problems with spelling, homophones, short form or alias, 
-                            answer me with "modified {...}", i.e. "modified" appeneded with your corrected dictionary.
-                            Do not make up extra words. Do not change the timestamp unless you are merging words.
-                            Modify punctuations to match the original script.
-                            Answer me with "failed" if you are not certain.
-                            Make sure the syntax is prefectly correct. It has to be a dict trailling exactly one space after "modified".
-                            Example of merging words:
-                            {
-                                script: "When ESTJs are mad, they won't hide it.",
-                                timed_caption: {"text": "When ESTJs are mad, they will not hide it", "chunks": [{"text": " When", "timestamp": (0.06, 0.62)}, {"text": " ESTJs", "timestamp": (0.62, 0.76)}, {"text": " are", "timestamp": (0.76, 1.22)}, {"text": " mad,", "timestamp": (1.22, 1.44)}, {"text": " they", "timestamp": (1.44, 1.74)}, {"text": " will", "timestamp": (1.74, 1.95)}, {"text": " not", "timestamp": (1.95, 2.08)}, {"text": " hide", "timestamp": (2.08, 2.20)}, {"text": " it.", "timestamp": (2.20, None)}]}
-                            }
-                            Expected response:
-                            "modified {"text": "When ESTJs are mad, they won't hide it", "chunks": [{"text": " When", "timestamp": (0.06, 0.62)}, {"text": " ESTJs", "timestamp": (0.62, 0.76)}, {"text": " are", "timestamp": (0.76, 1.22)}, {"text": " mad,", "timestamp": (1.22, 1.44)}, {"text": " they", "timestamp": (1.44, 1.74)}, {"text": " won't", "timestamp": (1.74, 2.08)}, {"text": " hide", "timestamp": (2.08, 2.20)}, {"text": " it.", "timestamp": (2.20, None)}]}"
-                        """
-                    },
-                    {
-                        "role": "user",
-                        "content": json.dumps(
+            with open("inputs/System_Prompt_Timed_Transcription.txt", "r") as f:
+                system_prompt = f.read()
+            message = json.dumps(
                             {
                             "script": caption,
                             "timed_caption": timed_caption
                             }
-                        )
-                    },
-                ],
-                stream=False
-            ).choices[0].message.content 
+            )
+            client = gradio_client.Client("http://127.0.0.1:7860/")
+            response, _ = client.predict(
+                    message=message,
+                    param_2=system_prompt,
+                    api_name="/chat"
+            )
             
             comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
             self.logger.debug(comparison)

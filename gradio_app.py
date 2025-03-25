@@ -12,6 +12,23 @@ import ZZZ_print_titles
 import text2YTShorts_batch
 import upload_YouTube
 
+# --- Set up loggers for text-to-YTShorts and YTuploader ---
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+text2YTShorts_logger = logging.getLogger("text-to-YTShorts")
+text2YTShorts_logger.setLevel(logging.DEBUG)
+text2YTShorts_string_stream = io.StringIO()
+text2YTShorts_string_handler = logging.StreamHandler(text2YTShorts_string_stream)
+text2YTShorts_string_handler.setFormatter(formatter)
+text2YTShorts_logger.addHandler(text2YTShorts_string_handler)
+
+YTUploader_logger = logging.getLogger("YTUploader")
+YTUploader_logger.setLevel(logging.DEBUG)
+YTUploader_string_stream = io.StringIO()
+YTUploader_string_handler = logging.StreamHandler(YTUploader_string_stream)
+YTUploader_string_handler.setFormatter(formatter)
+YTUploader_logger.addHandler(YTUploader_string_handler)
+
 def load_file_content(path):
     if os.path.exists(path):
         with open(path, 'r') as f:
@@ -60,16 +77,16 @@ def create_demo():
         with gr.Tab("Create or Edit Proposals"):
             def ask_LLM(proposal_content, modified_proposal_content, LLM_input):
                 proposal_content = modified_proposal_content or proposal_content
-                with open("inputs/Proposal_System_Prompt.txt", "r") as f:
+                with open("inputs/System_Prompt_Proposal.txt", "r") as f:
                     system_prompt = f.read()
-                #TODO: Check if DeepSeek has system prompt
-                message = "\n\n".join([system_prompt, LLM_input, modified_proposal_content])
+                message = "\n\n".join([LLM_input, proposal_content])
                 client = gradio_client.Client("http://127.0.0.1:7860/")
-                result, _ = client.predict(
+                response, _ = client.predict(
                         message=message,
+                        param_2=system_prompt,
                         api_name="/chat"
                 )
-                return result
+                return response
             with gr.Row():
                 with gr.Column():
                     proposal_path = gr.Dropdown(None, label="Proposal file path")
@@ -77,7 +94,7 @@ def create_demo():
                     save_proposal_button = gr.Button("Save Proposal", variant="primary")
                 with gr.Column():
                     LM_input = gr.Textbox(label="Ask LLM to modify the proposal")
-                    modified_proposal_content = gr.Code(None, label="Modified Proposal Content", language="json", max_lines=20)
+                    modified_proposal_content = gr.Markdown(None, label="Modified Proposal Content")
                     ask_llm_button = gr.Button("Ask LLM", variant="primary")
                     apply_llm_button = gr.Button("Copy to left", variant="primary")
             
@@ -100,22 +117,17 @@ def create_demo():
                         os.remove(interrupt_flag_path)
                     with open(interrupt_flag_path, "w") as f:
                         f.write("running")
-                logger = logging.getLogger(__name__)
-                logger.setLevel(logging.DEBUG)
-                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-                string_stream = io.StringIO()
-                string_handler = logging.StreamHandler(string_stream)
-                string_handler.setFormatter(formatter)
-                logger.addHandler(string_handler)
+                text2YTShorts_string_stream.truncate(0)
+                text2YTShorts_string_stream.seek(0)
 
-                for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, logger=logger):
+                for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, logger=text2YTShorts_logger):
                     with open(interrupt_flag_path, "r") as f:
                         flag = f.readline().strip()
-                    yield string_stream.getvalue()
+                    yield text2YTShorts_string_stream.getvalue()
                     if flag == "stop":
-                        logger.error("Process Interrupted")
+                        text2YTShorts_logger.error("Process Interrupted")
                         break
-                yield string_stream.getvalue() + "Process Ended"
+                return text2YTShorts_string_stream.getvalue() + "Process Ended"
             
             with gr.Row():
                 send_email_checkbox = gr.Checkbox(label="Send Email", value=False)
@@ -123,7 +135,7 @@ def create_demo():
                 text2YTShorts_batch_stop_button = gr.Button("Stop", variant="stop")
                 interrupt_flag_path = gr.Text(".gradio/interrupt_flag", visible=False)
             text2YTShorts_batch_progress = gr.Textbox(label="Progress Bar")
-            text2YTShorts_batch_outputs = gr.Textbox(label="Output", lines=30, max_lines=30)
+            text2YTShorts_batch_outputs = gr.Textbox(text2YTShorts_string_stream.getvalue(), label="Output", lines=30, max_lines=30)
             text2YTShorts_batch_generate_button.click(
                 fn=run_text2YTShorts_batch,
                 inputs=[topics_path, send_email_checkbox, interrupt_flag_path],
@@ -176,18 +188,13 @@ def create_demo():
             
         with gr.Tab("Upload to YouTube (Local Machine Only)"):
             def run_upload(topics, publish_date, video_per_day, progress=gr.Progress(track_tqdm=True)):
-                logger = logging.getLogger(__name__)
-                logger.setLevel(logging.DEBUG)
-                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-                string_stream = io.StringIO()
-                string_handler = logging.StreamHandler(string_stream)
-                string_handler.setFormatter(formatter)
-                logger.addHandler(string_handler)
-
-                uploader = upload_YouTube.YouTubeUploader(logger=logger)
+                YTUploader_string_stream.truncate(0)
+                YTUploader_string_stream.seek(0)
+                
+                uploader = upload_YouTube.YouTubeUploader(logger=YTUploader_logger)
                 for _ in uploader.upload_from_topic_file(topics, publish_date, int(video_per_day)):
-                    yield string_stream.getvalue()
-                yield string_stream.getvalue()
+                    yield YTUploader_string_stream.getvalue()
+                yield YTUploader_string_stream.getvalue()
 
             with gr.Row():
                 publish_date = gr.Textbox(datetime.date.today().strftime('%Y-%m-%d'), label="Publish Date (YYYY-MM-DD)")
@@ -236,5 +243,5 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=1388,
-        share=True
+        share=True,
         )

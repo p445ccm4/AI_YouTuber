@@ -21,8 +21,10 @@ class YTShortsMaker:
 
         if "_women_" in json_file or "Zodiac_" in json_file or "MBTI_" in json_file:
             reference_audio_path = "inputs/reference_audio_woman.wav"
+        elif "Movitation_" in json_file:
+            reference_audio_path = "inputs/reference_audio_man_30s.wav"
         else:
-            # "Motivation_", "_men_"
+            # "_men_"
             reference_audio_path = "inputs/reference_audio_man.wav"
         self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio_path=reference_audio_path)
 

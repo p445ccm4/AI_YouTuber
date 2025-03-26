@@ -21,8 +21,8 @@ class YTShortsMaker:
 
         if "_women_" in json_file or "Zodiac_" in json_file or "MBTI_" in json_file:
             reference_audio_path = "inputs/reference_audio_woman.wav"
-        elif "Movitation_" in json_file:
-            reference_audio_path = "inputs/reference_audio_man_30s.wav"
+        # elif "Motivation_" in json_file:
+        #     reference_audio_path = "inputs/reference_audio_man_30s.wav"
         else:
             # "_men_"
             reference_audio_path = "inputs/reference_audio_man.wav"
@@ -82,7 +82,7 @@ class YTShortsMaker:
             has_words = element.get('has_words', False)
 
             try:
-                speaking_rate = 25
+                speaking_rate = 20
                 while True:
                     yield
                     # 3. Generate audio

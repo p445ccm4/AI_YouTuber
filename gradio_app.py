@@ -80,10 +80,11 @@ def create_demo():
                 with open("inputs/System_Prompt_Proposal.txt", "r") as f:
                     system_prompt = f.read()
                 message = "\n\n".join([LLM_input, proposal_content])
-                client = gradio_client.Client("http://127.0.0.1:7860/")
+                client = gradio_client.Client("http://192.168.1.205:7860/")
                 response, _ = client.predict(
                         message=message,
-                        param_2=system_prompt,
+                        param_2=None, # File
+                        param_3=system_prompt, # System Prompt
                         api_name="/chat"
                 )
                 return response
@@ -111,7 +112,7 @@ def create_demo():
                     f.write("stop")
                 gr.Warning("Process will stop after processing this video. Please wait...")
 
-            def run_text2YTShorts_batch(topics_path, send_email, interrupt_flag_path): #, progress=gr.Progress(track_tqdm=True)): # have bug on nested tqdm
+            def run_text2YTShorts_batch(topics_path, send_email, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)): # have bug on nested tqdm
                 if interrupt_flag_path:
                     if os.path.exists(interrupt_flag_path):
                         os.remove(interrupt_flag_path)
@@ -126,7 +127,7 @@ def create_demo():
                     yield text2YTShorts_string_stream.getvalue()
                     if flag == "stop":
                         text2YTShorts_logger.error("Process Interrupted")
-                        break
+                        raise GeneratorExit()
                 return text2YTShorts_string_stream.getvalue() + "Process Ended"
             
             with gr.Row():

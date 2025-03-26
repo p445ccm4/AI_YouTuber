@@ -3,18 +3,12 @@ import gradio_client
 import moviepy
 import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-from google import genai
-from openai import OpenAI
 import json
 
 class VideoCaptioner:
-    def __init__(self, logger:logging.Logger):
+    def __init__(self, logger):
         self.logger = logger
         self.pipe = None
-        with open("inputs/Gemini_API.txt", "r") as f:
-            self.gemini_client = genai.Client(api_key=f.readline().strip())
-        with open("inputs/DeepSeek_API.txt", "r") as f:
-            self.client = OpenAI(api_key=f.readline().strip(), base_url="https://api.deepseek.com")
 
     def _load_model(self):
         if not self.pipe:
@@ -61,18 +55,19 @@ class VideoCaptioner:
                             "timed_caption": timed_caption
                             }
             )
-            client = gradio_client.Client("http://127.0.0.1:7860/")
+            client = gradio_client.Client("http://192.168.1.205:7860/")
             response, _ = client.predict(
                     message=message,
-                    param_2=system_prompt,
+                    param_2=None, # File
+                    param_3=system_prompt, # System Prompt
                     api_name="/chat"
             )
             
             comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
-            self.logger.debug(comparison)
+            self.logger.info(comparison)
             if response.startswith("modified"):
                 try:
-                    return True, json.loads(response.removeprefix("modified "))
+                    return True, json.loads(response.strip().removeprefix("modified ").strip())
                 except json.JSONDecodeError:
                     self.logger.error(f"Failed to parse modified JSON")
             return False, comparison

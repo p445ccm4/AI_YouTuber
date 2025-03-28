@@ -1,9 +1,9 @@
 import argparse
-import gradio_client
 import moviepy
 import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 import json
+import llm
 
 class VideoCaptioner:
     def __init__(self, logger):
@@ -55,13 +55,8 @@ class VideoCaptioner:
                             "timed_caption": timed_caption
                             }
             )
-            client = gradio_client.Client("http://192.168.1.205:7860/")
-            response, _ = client.predict(
-                    message=message,
-                    param_2=None, # File
-                    param_3=system_prompt, # System Prompt
-                    api_name="/chat"
-            )
+            
+            response = llm.gen_response(message, None, "qwen2.5:72b", system_prompt)
             
             comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
             self.logger.info(comparison)

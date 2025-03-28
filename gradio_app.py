@@ -11,6 +11,7 @@ import ZZZ_print_status
 import ZZZ_print_titles
 import text2YTShorts_batch
 import upload_YouTube
+import llm
 
 # --- Set up loggers for text-to-YTShorts and YTuploader ---
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -80,14 +81,8 @@ def create_demo():
                 with open("inputs/System_Prompt_Proposal.txt", "r") as f:
                     system_prompt = f.read()
                 message = "\n\n".join([LLM_input, proposal_content])
-                client = gradio_client.Client("http://192.168.1.205:7860/")
-                response, _ = client.predict(
-                        message=message,
-                        param_2=None, # File
-                        param_3=system_prompt, # System Prompt
-                        api_name="/chat"
-                )
-                return response
+                response = llm.gen_response(message, [], "qwen2.5:72b", system_prompt)
+                yield from response
             with gr.Row():
                 with gr.Column():
                     proposal_path = gr.Dropdown(None, label="Proposal file path")
@@ -95,7 +90,7 @@ def create_demo():
                     save_proposal_button = gr.Button("Save Proposal", variant="primary")
                 with gr.Column():
                     LM_input = gr.Textbox(label="Ask LLM to modify the proposal")
-                    modified_proposal_content = gr.Markdown(None, label="Modified Proposal Content")
+                    modified_proposal_content = gr.Code(None, label="Modified Proposal Content", language="json", max_lines=20)
                     ask_llm_button = gr.Button("Ask LLM", variant="primary")
                     apply_llm_button = gr.Button("Copy to left", variant="primary")
             

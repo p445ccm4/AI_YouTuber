@@ -12,6 +12,7 @@ import ZZZ_print_titles
 import text2YTShorts_batch
 import upload_YouTube
 import llm
+import transcript_YouTube
 
 # --- Set up loggers for text-to-YTShorts and YTuploader ---
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -59,7 +60,8 @@ def load_topics(topics_path):
 def create_demo():
     with gr.Blocks(title="AI YTB") as demo:
         input_dir = "inputs"
-        topics_path = gr.Dropdown(label="Topic file name", choices=sorted([os.path.join(input_dir, filename) for filename in os.listdir(input_dir) if filename.endswith(".topics")], reverse=True))
+        with gr.Row():
+            topics_path = gr.Dropdown(label="Topic file name", choices=sorted([os.path.join(input_dir, filename) for filename in os.listdir(input_dir) if filename.endswith(".topics")], reverse=True), allow_custom_value=True)
         with gr.Row():
             with gr.Column(): 
                 load_topics_button = gr.Button("Load Topic File", variant="primary")
@@ -75,13 +77,22 @@ def create_demo():
             apply_status_button.click(fn=lambda x: x, inputs=print_status_outputs, outputs=topics_content)
             print_status_button.click(fn=ZZZ_print_status.print_status,inputs=topics_path, outputs=print_status_outputs)
 
+        with gr.Tab("Transcript from Existing YouTube Videos"):
+            video_urls = gr.Code(label="Video URLs and Shorts per Video", language="shell", max_lines=30)
+            series = gr.Dropdown(["Relationship", "Motivation", "MBTI", "Zodiac", "Other"], label="Series")
+            topics_path
+            transcribe_and_make_button = gr.Button("Transribe and Make Videos", variant="primary")
+            transcribe_and_make_outputs = gr.Textbox(label="Progress Output", max_lines=30)
+
+            transcribe_and_make_button.click(fn=transcript_YouTube.make_proposals, inputs=[video_urls, series, topics_path], outputs=transcribe_and_make_outputs)
+
         with gr.Tab("Create or Edit Proposals"):
-            def ask_LLM(proposal_content, modified_proposal_content, LLM_input):
+            def ask_LLM(proposal_content, modified_proposal_content, user_input):
                 proposal_content = modified_proposal_content or proposal_content
                 with open("inputs/System_Prompt_Proposal.txt", "r") as f:
                     system_prompt = f.read()
-                message = "\n\n".join([LLM_input, proposal_content])
-                response = llm.gen_response(message, [], "qwen2.5:72b", system_prompt)
+                message = "\n\n".join([user_input, proposal_content])
+                response = llm.gen_response(message, [], "deepseek-v3", system_prompt)
                 yield from response
             with gr.Row():
                 with gr.Column():
@@ -89,12 +100,12 @@ def create_demo():
                     proposal_content = gr.Code(label="Proposal Content",language="json", max_lines=20)
                     save_proposal_button = gr.Button("Save Proposal", variant="primary")
                 with gr.Column():
-                    LM_input = gr.Textbox(label="Ask LLM to modify the proposal")
+                    LLM_user_input = gr.Textbox(label="Ask LLM to modify the proposal")
                     modified_proposal_content = gr.Code(None, label="Modified Proposal Content", language="json", max_lines=20)
                     ask_llm_button = gr.Button("Ask LLM", variant="primary")
                     apply_llm_button = gr.Button("Copy to left", variant="primary")
             
-            ask_llm_button.click(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LM_input], outputs=modified_proposal_content)
+            ask_llm_button.click(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LLM_user_input], outputs=modified_proposal_content)
             apply_llm_button.click(fn=lambda x: x, inputs=modified_proposal_content, outputs=proposal_content)
             proposal_path.change(load_file_content, inputs=proposal_path, outputs=proposal_content)
             save_proposal_button.click(save_file_content, inputs=[proposal_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
@@ -131,7 +142,7 @@ def create_demo():
                 text2YTShorts_batch_stop_button = gr.Button("Stop", variant="stop")
                 interrupt_flag_path = gr.Text(".gradio/interrupt_flag", visible=False)
             text2YTShorts_batch_progress = gr.Textbox(label="Progress Bar")
-            text2YTShorts_batch_outputs = gr.Textbox(text2YTShorts_string_stream.getvalue(), label="Output", lines=30, max_lines=30)
+            text2YTShorts_batch_outputs = gr.Textbox(text2YTShorts_string_stream.getvalue, label="Output", lines=30, max_lines=30)
             text2YTShorts_batch_generate_button.click(
                 fn=run_text2YTShorts_batch,
                 inputs=[topics_path, send_email_checkbox, interrupt_flag_path],
@@ -239,5 +250,5 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=1388,
-        share=True,
+        # share=True,
         )

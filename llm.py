@@ -1,15 +1,13 @@
 import ollama
 
 def gen_response(user_message:str, history:list[dict], ollama_model:str, system_prompt:str=""):
-    text_input = []
     
     # Handle User Text Input
     if user_message:
-        text_input.append(f"User Input: {user_message}")
         history.append(
             {
                 "role": "user",
-                "content": "\n\n".join(text_input)
+                "content": user_message
             }
         )
 

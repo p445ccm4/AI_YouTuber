@@ -32,18 +32,18 @@ YTUploader_string_handler.setFormatter(formatter)
 YTUploader_logger.addHandler(YTUploader_string_handler)
 
 def load_file_content(path):
-    if os.path.exists(path):
-        with open(path, 'r') as f:
-            content = f.read()
-        return content
-    else:
-        return "File not found"
+    with open(path, 'r') as f:
+        content = f.read()
+    return content
 
 def save_file_content(path, content):
     with open(path, 'w') as f:
         f.write(content)
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
+def load_topic_paths(input_dir="inputs"):
+    return sorted([os.path.join(input_dir, filename) for filename in os.listdir(input_dir) if filename.endswith(".topics")], reverse=True)
+           
 def load_proposal_paths(topics_path, input_dir="inputs/proposals"):
     """Browses files in a directory and returns a list of filenames."""
     with open(topics_path, 'r') as f:
@@ -59,13 +59,12 @@ def load_topics(topics_path):
 # --- Gradio Interface ---
 def create_demo():
     with gr.Blocks(title="AI YTB") as demo:
-        input_dir = "inputs"
         with gr.Row():
-            topics_path = gr.Dropdown(label="Topic file name", choices=sorted([os.path.join(input_dir, filename) for filename in os.listdir(input_dir) if filename.endswith(".topics")], reverse=True), allow_custom_value=True)
+            topics_path = gr.Dropdown(label="Topic file name", choices=load_topic_paths(),  allow_custom_value=True)
         with gr.Row():
             with gr.Column(): 
-                load_topics_button = gr.Button("Load Topic File", variant="primary")
-                topics_content = gr.Code(label="Topic File Content", language='shell', interactive=True, max_lines=30)
+                # load_topics_button = gr.Button("Load Topic File", variant="primary")
+                topics_content = gr.Code(value=load_file_content, inputs=topics_path, label="Topic File Content", language='shell', interactive=True, max_lines=30)
                 save_topics_button = gr.Button("Save Topic File", variant="primary")
                 save_topics_outputs = gr.Textbox(label="Last Update")
 
@@ -76,6 +75,10 @@ def create_demo():
                 
             apply_status_button.click(fn=lambda x: x, inputs=print_status_outputs, outputs=topics_content)
             print_status_button.click(fn=ZZZ_print_status.print_status,inputs=topics_path, outputs=print_status_outputs)
+            save_topics_button.click(
+                save_file_content, inputs=[topics_path, topics_content], outputs=save_topics_outputs
+            )
+
 
         with gr.Tab("Transcript from Existing YouTube Videos"):
             video_urls = gr.Code(label="Video URLs and Shorts per Video", language="shell", max_lines=30)
@@ -96,8 +99,8 @@ def create_demo():
                 yield from response
             with gr.Row():
                 with gr.Column():
-                    proposal_path = gr.Dropdown(None, label="Proposal file path")
-                    proposal_content = gr.Code(label="Proposal Content",language="json", max_lines=20)
+                    proposal_path = gr.Dropdown(value=load_proposal_paths, inputs=topics_path, label="Proposal file path")
+                    proposal_content = gr.Code(load_file_content, inputs=proposal_path, label="Proposal Content",language="json", max_lines=20)
                     save_proposal_button = gr.Button("Save Proposal", variant="primary")
                 with gr.Column():
                     LLM_user_input = gr.Textbox(label="Ask LLM to modify the proposal")
@@ -107,7 +110,6 @@ def create_demo():
             
             ask_llm_button.click(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LLM_user_input], outputs=modified_proposal_content)
             apply_llm_button.click(fn=lambda x: x, inputs=modified_proposal_content, outputs=proposal_content)
-            proposal_path.change(load_file_content, inputs=proposal_path, outputs=proposal_content)
             save_proposal_button.click(save_file_content, inputs=[proposal_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
         
         with gr.Tab("Process Text-to-YTShorts Batch"):
@@ -188,6 +190,16 @@ def create_demo():
             video_paths = gr.State([])
             topics = gr.State([])
 
+            demo.load(
+                load_topics, inputs=topics_path, outputs=[current_topic, topics]
+            ).then(
+                fn=load_video_paths, inputs=[topics_path, current_topic], outputs=[current_video_path, video_paths]
+            ).then(
+                fn=lambda path: gr.Video(path, height="100vh"), inputs=current_video_path, outputs=video_player
+            )
+            topics_path.change(
+                load_topics, inputs=topics_path, outputs=[current_topic, topics]
+            )
             current_topic.change(fn=load_video_paths, inputs=[topics_path, current_topic], outputs=[current_video_path, video_paths])
             current_video_path.change(fn=lambda path: gr.Video(path, height="100vh"), inputs=current_video_path, outputs=video_player)
             next_video_button.click(next_choice, inputs=[current_video_path, video_paths], outputs=current_video_path)
@@ -227,21 +239,6 @@ def create_demo():
                 flagging_mode="never",
                 submit_btn="Print",
             )
-        
-        load_topics_button.click(
-            load_file_content, inputs=topics_path, outputs=topics_content
-        ).then(
-            load_proposal_paths, inputs=topics_path, outputs=proposal_path
-        ).then(
-            load_topics, inputs=topics_path, outputs=[current_topic, topics]
-        )
-        save_topics_button.click(
-            save_file_content, inputs=[topics_path, topics_content], outputs=save_topics_outputs
-        ).then(
-            load_proposal_paths, inputs=topics_path, outputs=proposal_path
-        ).then(
-            load_topics, inputs=topics_path, outputs=[current_topic, topics]
-        )
 
     return demo
 

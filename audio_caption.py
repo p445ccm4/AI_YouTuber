@@ -56,7 +56,7 @@ class VideoCaptioner:
                             }
             )
             
-            response = llm.gen_response(message, None, "qwq", system_prompt)
+            response = "".join(llm.gen_response(message, None, "qwq", system_prompt))
             
             comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
             self.logger.info(comparison)

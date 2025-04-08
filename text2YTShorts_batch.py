@@ -13,7 +13,7 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, logger=None):
     with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines()]
 
-    for line_idx, line in tqdm.tqdm(enumerate(lines), total=len(lines)):
+    for line_idx, line in tqdm.tqdm(enumerate(lines), total=len(lines), unit="topics"):
         if not line or line.strip().startswith("#"):
             continue
         line = line.split()

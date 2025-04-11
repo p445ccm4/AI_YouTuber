@@ -13,7 +13,6 @@ class YTShortsMaker:
         self.logger = logger
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
-        self.interpolator = interpolate.FrameInterpolator(logger=self.logger)
         self.audio_captioner = audio_caption.VideoCaptioner(ollama_model=ollama_model, logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
         self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)

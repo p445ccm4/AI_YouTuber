@@ -32,6 +32,8 @@ YTUploader_string_handler.setFormatter(formatter)
 YTUploader_logger.addHandler(YTUploader_string_handler)
 
 def load_file_content(path):
+    if not path:
+        return ""
     with open(path, 'r') as f:
         content = f.read()
     return content
@@ -60,10 +62,9 @@ def load_topics(topics_path):
 def create_demo():
     with gr.Blocks(title="AI YTB") as demo:
         with gr.Row():
-            topics_path = gr.Dropdown(label="Topic file name", choices=load_topic_paths(),  allow_custom_value=True)
+            topics_path = gr.Dropdown(label="Topic file name", choices=load_topic_paths(), value=load_topic_paths()[0],  allow_custom_value=True)
         with gr.Row():
             with gr.Column(): 
-                # load_topics_button = gr.Button("Load Topic File", variant="primary")
                 topics_content = gr.Code(value=load_file_content, inputs=topics_path, label="Topic File Content", language='shell', interactive=True, max_lines=30)
                 save_topics_button = gr.Button("Save Topic File", variant="primary")
                 save_topics_outputs = gr.Textbox(label="Last Update")
@@ -71,7 +72,7 @@ def create_demo():
             with gr.Column():
                 print_status_button = gr.Button("Print Status", variant="primary")
                 print_status_outputs = gr.Code(label="Current Status", language='shell', interactive=True, max_lines=30)
-                apply_status_button = gr.Button("Copy to left", variant="primary")
+                apply_status_button = gr.Button("Copy to left", variant="huggingface")
                 
             apply_status_button.click(fn=lambda x: x, inputs=print_status_outputs, outputs=topics_content)
             print_status_button.click(fn=ZZZ_print_status.print_status,inputs=topics_path, outputs=print_status_outputs)
@@ -90,12 +91,12 @@ def create_demo():
             transcribe_and_make_button.click(fn=transcript_YouTube.make_proposals, inputs=[video_urls, series, topics_path], outputs=transcribe_and_make_outputs)
 
         with gr.Tab("Create or Edit Proposals"):
-            def ask_LLM(proposal_content, modified_proposal_content, user_input):
+            def ask_LLM(proposal_content, modified_proposal_content, user_input, ollama_model):
                 proposal_content = modified_proposal_content or proposal_content
                 with open("inputs/System_Prompt_Proposal.txt", "r") as f:
                     system_prompt = f.read()
                 message = "\n\n".join([user_input, proposal_content])
-                response = llm.gen_response(message, [], "deepseek-v3", system_prompt)
+                response = llm.gen_response(message, [], ollama_model, system_prompt)
                 yield from response
             with gr.Row():
                 with gr.Column():
@@ -104,11 +105,13 @@ def create_demo():
                     save_proposal_button = gr.Button("Save Proposal", variant="primary")
                 with gr.Column():
                     LLM_user_input = gr.Textbox(label="Ask LLM to modify the proposal")
+                    with gr.Row():
+                        ollama_model = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names())
+                        ask_llm_button = gr.Button("Ask LLM", variant="primary")
                     modified_proposal_content = gr.Code(None, label="Modified Proposal Content", language="json", max_lines=20)
-                    ask_llm_button = gr.Button("Ask LLM", variant="primary")
                     apply_llm_button = gr.Button("Copy to left", variant="primary")
             
-            ask_llm_button.click(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LLM_user_input], outputs=modified_proposal_content)
+            ask_llm_button.click(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LLM_user_input, ollama_model], outputs=modified_proposal_content)
             apply_llm_button.click(fn=lambda x: x, inputs=modified_proposal_content, outputs=proposal_content)
             save_proposal_button.click(save_file_content, inputs=[proposal_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
         
@@ -120,7 +123,7 @@ def create_demo():
                     f.write("stop")
                 gr.Warning("Process will stop after processing this video. Please wait...")
 
-            def run_text2YTShorts_batch(topics_path, send_email, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)): # have bug on nested tqdm
+            def run_text2YTShorts_batch(topics_path, send_email, ollama_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)): # have bug on nested tqdm
                 if interrupt_flag_path:
                     if os.path.exists(interrupt_flag_path):
                         os.remove(interrupt_flag_path)
@@ -129,17 +132,21 @@ def create_demo():
                 text2YTShorts_string_stream.truncate(0)
                 text2YTShorts_string_stream.seek(0)
 
-                for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, logger=text2YTShorts_logger):
+                for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, logger=text2YTShorts_logger, ollama_model=ollama_model):
                     with open(interrupt_flag_path, "r") as f:
                         flag = f.readline().strip()
                     yield text2YTShorts_string_stream.getvalue()
+
                     if flag == "stop":
                         text2YTShorts_logger.error("Process Interrupted")
-                        raise GeneratorExit()
-                return text2YTShorts_string_stream.getvalue() + "Process Ended"
+                        return text2YTShorts_string_stream.getvalue()
+                    
+                text2YTShorts_logger.info("Process Ended")
+                return text2YTShorts_string_stream.getvalue()
             
             with gr.Row():
                 send_email_checkbox = gr.Checkbox(label="Send Email", value=False)
+                ollama_model
                 text2YTShorts_batch_generate_button = gr.Button("Generate", variant="primary")
                 text2YTShorts_batch_stop_button = gr.Button("Stop", variant="stop")
                 interrupt_flag_path = gr.Text(".gradio/interrupt_flag", visible=False)
@@ -147,7 +154,7 @@ def create_demo():
             text2YTShorts_batch_outputs = gr.Textbox(text2YTShorts_string_stream.getvalue, label="Output", lines=30, max_lines=30)
             text2YTShorts_batch_generate_button.click(
                 fn=run_text2YTShorts_batch,
-                inputs=[topics_path, send_email_checkbox, interrupt_flag_path],
+                inputs=[topics_path, send_email_checkbox, ollama_model, interrupt_flag_path],
                 outputs=text2YTShorts_batch_outputs,
                 show_progress_on=text2YTShorts_batch_progress,
                 show_progress="full",

@@ -6,9 +6,10 @@ import json
 import llm
 
 class VideoCaptioner:
-    def __init__(self, logger):
+    def __init__(self, ollama_model, logger):
         self.logger = logger
         self.pipe = None
+        self.ollama_model = ollama_model
 
     def _load_model(self):
         if not self.pipe:
@@ -56,7 +57,8 @@ class VideoCaptioner:
                             }
             )
             
-            response = "".join(llm.gen_response(message, None, "qwq", system_prompt))
+            for r in llm.gen_response(message, [], "gemma3:27b", system_prompt, stream=False):
+                response = r
             
             comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
             self.logger.info(comparison)

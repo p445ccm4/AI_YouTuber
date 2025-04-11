@@ -9,13 +9,11 @@ import datetime
 import time
 import tqdm
 
-def text2YTShorts_batch(topic_file_path:str, send_email=False, logger=None): 
+def text2YTShorts_batch(topic_file_path:str, send_email=False, ollama_model="gemma3:37b", logger=None): 
     with open(topic_file_path, 'r') as f:
-        lines = [line.strip() for line in f.readlines()]
+        lines = [line.strip() for line in f.readlines() if not line.strip() or line.strip().startswith("#")]
 
     for line_idx, line in tqdm.tqdm(enumerate(lines), total=len(lines), unit="topics"):
-        if not line or line.strip().startswith("#"):
-            continue
         line = line.split()
         topic = line[0]
         indices_to_process = [int(i) for i in line[1:]] if len(line) > 1 else None # None if no indices provided
@@ -42,6 +40,7 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, logger=None):
                 json_file,
                 working_dir,
                 indices_to_process,
+                ollama_model=ollama_model,
                 logger=logger
             )
             yield from shorts_maker.run()

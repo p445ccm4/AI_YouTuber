@@ -3,18 +3,17 @@ import json
 import argparse
 import logging
 import traceback
-import gen_audio, gen_video, gen_freeze_video, interpolate, audio_caption, concat, gen_music, upload_YouTube
+import gen_audio, gen_video, gen_freeze_video, audio_caption, concat, gen_music, upload_YouTube
 
 class YTShortsMaker:
-    def __init__(self, json_file, working_dir, indices_to_process=None, logger=None, upload=False):
+    def __init__(self, json_file, working_dir, indices_to_process=None, ollama_model="gemma3:27b", logger=None, upload=False):
         self.json_file = json_file
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
         self.logger = logger
         self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
-        self.interpolator = interpolate.FrameInterpolator(logger=self.logger)
-        self.audio_captioner = audio_caption.VideoCaptioner(logger=self.logger)
+        self.audio_captioner = audio_caption.VideoCaptioner(ollama_model=ollama_model, logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
         self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)
         self.yt_uploader = upload_YouTube.YouTubeUploader(logger=self.logger) if upload else None

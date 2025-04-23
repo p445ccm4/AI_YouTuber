@@ -57,17 +57,20 @@ class VideoCaptioner:
                             }
             )
             
-            for r in llm.gen_response(message, [], "gemma3:27b", system_prompt, stream=False):
+            for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False):
                 response = r
+            _, _, response = response.rpartition("</think>")
+            response = response.strip()
             
             comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
             self.logger.info(comparison)
             if response.startswith("modified"):
                 try:
-                    return True, json.loads(response.strip().removeprefix("modified ").strip())
+                    return True, json.loads(response.removeprefix("modified ").strip())
                 except json.JSONDecodeError:
                     self.logger.error(f"Failed to parse modified JSON")
-            return False, comparison
+            else:
+                return False, comparison
 
     def add_audio_and_caption_tiktok_style(self, timed_caption, input_video_path, input_audio_path, output_video_path):
         # Load video and audio

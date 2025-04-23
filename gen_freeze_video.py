@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from diffusers import FluxPipeline
 import moviepy
 import argparse
 import os
@@ -19,47 +18,33 @@ class FreezeVideoGenerator:
 
     def _load_model(self):
         if self.pipe is None: # Check if self.pipe is None
-            # self.logger.info("Loading FLUX model...")
-            # self.pipe = FluxPipeline.from_pretrained("./models/FLUX.1-dev", torch_dtype=torch.bfloat16)
-            # self.pipe = self.pipe.to('cpu') # Load on CPU initially
-            # self.logger.info("FLUX model loaded.")
+            self.logger.info("Loading FLUX model...")
+            from diffusers import FluxPipeline
+            self.pipe = FluxPipeline.from_pretrained("./models/FLUX.1-dev", torch_dtype=torch.bfloat16)
+            self.pipe = self.pipe.to('cpu') # Load on CPU initially
+            self.logger.info("FLUX model loaded.")
 
-            self.logger.info("Loading Hi-Dream model...")
-            from hi_diffusers import HiDreamImagePipeline
-            from hi_diffusers import HiDreamImageTransformer2DModel
-            from hi_diffusers.schedulers.fm_solvers_unipc import FlowUniPCMultistepScheduler
-            from transformers import LlamaForCausalLM, PreTrainedTokenizerFast
-            llama_model_id = "./models/Llama-3.1-8B-Instruct"
-            model_id = "./models/HiDream-I1-Full"
+            # self.logger.info("Loading Hi-Dream model...")
+            # from transformers import PreTrainedTokenizerFast, LlamaForCausalLM
+            # from diffusers import HiDreamImagePipeline
+            # tokenizer_4 = PreTrainedTokenizerFast.from_pretrained("./models/Llama-3.1-8B-Instruct")
+            # text_encoder_4 = LlamaForCausalLM.from_pretrained(
+            #     "./models/Llama-3.1-8B-Instruct",
+            #     output_hidden_states=True,
+            #     output_attentions=True,
+            #     torch_dtype=torch.bfloat16,
+            # )
 
-            scheduler = FlowUniPCMultistepScheduler(num_train_timesteps=1000, shift=3.0, use_dynamic_shifting=False)
-    
-            tokenizer_4 = PreTrainedTokenizerFast.from_pretrained(
-                llama_model_id,
-                use_fast=False)
-            
-            text_encoder_4 = LlamaForCausalLM.from_pretrained(
-                llama_model_id,
-                output_hidden_states=True,
-                output_attentions=True,
-                torch_dtype=torch.bfloat16).to("cuda")
+            # self.pipe = HiDreamImagePipeline.from_pretrained(
+            #     "./models/HiDream-I1-Full",
+            #     tokenizer_4=tokenizer_4,
+            #     text_encoder_4=text_encoder_4,
+            #     torch_dtype=torch.bfloat16,
+            # )
 
-            transformer = HiDreamImageTransformer2DModel.from_pretrained(
-                model_id, 
-                subfolder="transformer", 
-                torch_dtype=torch.bfloat16).to("cuda")
-
-            pipe = HiDreamImagePipeline.from_pretrained(
-                model_id, 
-                scheduler=scheduler,
-                tokenizer_4=tokenizer_4,
-                text_encoder_4=text_encoder_4,
-                torch_dtype=torch.bfloat16
-            ).to("cuda", torch.bfloat16)
-            pipe.transformer = transformer
-            
-            self.pipe = pipe.to("cpu")
-            self.logger.info("Hi-Dream model loaded.")
+            # self.pipe = self.pipe.to('cpu')
+            # self.pipe.enable_model_cpu_offload()
+            # self.logger.info("Hi-Dream model loaded.")
 
     def generate_freeze_video(self, prompt, index, output_video_path, fps=20, num_frames=None):
         output_dir = os.path.dirname(output_video_path)
@@ -86,7 +71,7 @@ class FreezeVideoGenerator:
             height=1280,
             width=720,
             num_inference_steps=50,
-            guidance_scale=5.0,
+            guidance_scale=30.0,
         ).images[0]
         self.pipe = self.pipe.to('cpu') # Move model back to CPU after generation to free GPU memory
 

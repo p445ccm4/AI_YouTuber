@@ -139,7 +139,8 @@ def create_demo():
 
                     if flag == "stop":
                         text2YTShorts_logger.error("Process Interrupted")
-                        return text2YTShorts_string_stream.getvalue()
+                        yield text2YTShorts_string_stream.getvalue()
+                        break
                     
                 text2YTShorts_logger.info("Process Ended")
                 return text2YTShorts_string_stream.getvalue()
@@ -202,13 +203,13 @@ def create_demo():
             ).then(
                 fn=load_video_paths, inputs=[topics_path, current_topic], outputs=[current_video_path, video_paths]
             ).then(
-                fn=lambda path: gr.Video(path, height="100vh"), inputs=current_video_path, outputs=video_player
+                fn=lambda path: gr.Video(path, height="80vh"), inputs=current_video_path, outputs=video_player
             )
             topics_path.change(
                 load_topics, inputs=topics_path, outputs=[current_topic, topics]
             )
             current_topic.change(fn=load_video_paths, inputs=[topics_path, current_topic], outputs=[current_video_path, video_paths])
-            current_video_path.change(fn=lambda path: gr.Video(path, height="100vh"), inputs=current_video_path, outputs=video_player)
+            current_video_path.change(fn=lambda path: gr.Video(path, height="80vh"), inputs=current_video_path, outputs=video_player)
             next_video_button.click(next_choice, inputs=[current_video_path, video_paths], outputs=current_video_path)
             next_topic_button.click(next_choice, inputs=[current_topic, topics], outputs=current_topic)
             
@@ -254,5 +255,5 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=1388,
-        share=True,
+        # share=True,
         )

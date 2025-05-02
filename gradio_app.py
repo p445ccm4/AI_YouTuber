@@ -11,7 +11,7 @@ import ZZZ_print_titles
 import text2YTShorts_batch
 import upload_YouTube
 import llm
-import transcript_YouTube
+import yt_url_to_proposals
 
 # --- Set up loggers for text-to-YTShorts and YTuploader ---
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -80,14 +80,21 @@ def create_demo():
             )
 
 
-        with gr.Tab("Transcript from Existing YouTube Videos"):
-            video_urls = gr.Code(label="Video URLs and Shorts per Video", language="shell", max_lines=30)
-            series = gr.Dropdown(["Relationship", "Motivation", "MBTI", "Zodiac", "Other"], label="Series")
-            topics_path
+        with gr.Tab("Transcribe from Existing YouTube Videos"):
+            with gr.Row():
+                video_urls = gr.Code(label="Video URLs", language="shell", max_lines=30)
+                with gr.Column():
+                    new_topics_path = gr.Dropdown(label="Topic file name", choices=load_topic_paths(), value=load_topic_paths()[0], allow_custom_value=True)
+                    series = gr.Dropdown(["Relationship", "Motivation", "MBTI", "Zodiac", "Other"], label="Series", allow_custom_value=True)
+                    start_index = gr.Textbox("1", label="Start Index")
             transcribe_and_make_button = gr.Button("Transribe and Make Videos", variant="primary")
             transcribe_and_make_outputs = gr.Textbox(label="Progress Output", max_lines=30)
 
-            transcribe_and_make_button.click(fn=transcript_YouTube.make_proposals, inputs=[video_urls, series, topics_path], outputs=transcribe_and_make_outputs)
+            transcribe_and_make_button.click(fn=yt_url_to_proposals.make_proposals, inputs=[video_urls, new_topics_path, series, start_index], outputs=transcribe_and_make_outputs)
+
+            # TODO: add a new section underneath after generating topics file.
+            # Allow user to give follow-up ammendments for the proposal using google.genai
+            # https://ai.google.dev/gemini-api/docs/text-generation#multi-turn-conversations
 
         with gr.Tab("Create or Edit Proposals"):
             def ask_LLM(proposal_content, modified_proposal_content, user_input, ollama_model):

@@ -3,7 +3,7 @@ import json
 import argparse
 import logging
 import traceback
-import gen_audio, gen_video, gen_freeze_video, audio_caption, concat, gen_music, upload_YouTube
+import gen_audio, gen_freeze_video, audio_caption, concat, gen_music, upload_YouTube # gen_video
 
 class YTShortsMaker:
     def __init__(self, json_file, working_dir, indices_to_process=None, ollama_model="gemma3:27b", logger=None, upload=False):
@@ -11,7 +11,7 @@ class YTShortsMaker:
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
         self.logger = logger
-        self.video_generator = gen_video.VideoGenerator(logger=self.logger)
+        # self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
         self.audio_captioner = audio_caption.VideoCaptioner(ollama_model=ollama_model, logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
@@ -74,7 +74,9 @@ class YTShortsMaker:
             if self.indices_to_process is not None and index not in self.indices_to_process:
                 self.logger.debug(f"Skipping index {index} as it's not in the provided indices.")
                 continue
-
+            
+            if os.path.exists(f"{self.working_dir}/{index}_captioned.mp4"):
+                os.remove(f"{self.working_dir}/{index}_captioned.mp4")
             caption = element.get('caption')
             prompt = element.get('prompt')
             voiceover = element.get('voiceover', caption)

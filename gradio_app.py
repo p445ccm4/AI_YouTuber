@@ -4,7 +4,6 @@ import time
 import logging
 import io
 import datetime
-import gradio_client
 
 # --- Import Functions Directly ---
 import ZZZ_print_status
@@ -106,7 +105,7 @@ def create_demo():
                 with gr.Column():
                     LLM_user_input = gr.Textbox(label="Ask LLM to modify the proposal")
                     with gr.Row():
-                        ollama_model_edit_proposal = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names())
+                        ollama_model_edit_proposal = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:30b-a3b")
                         ask_llm_button = gr.Button("Ask LLM", variant="primary")
                     modified_proposal_content = gr.Code(None, label="Modified Proposal Content", language="json", max_lines=20)
                     apply_llm_button = gr.Button("Copy to left", variant="primary")
@@ -147,7 +146,7 @@ def create_demo():
             
             with gr.Row():
                 send_email_checkbox = gr.Checkbox(label="Send Email", value=False)
-                ollama_model_text2YTShorts = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names())
+                ollama_model_text2YTShorts = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:30b-a3b")
                 text2YTShorts_batch_generate_button = gr.Button("Generate", variant="primary")
                 text2YTShorts_batch_stop_button = gr.Button("Stop", variant="stop")
                 interrupt_flag_path = gr.Text(".gradio/interrupt_flag", visible=False)

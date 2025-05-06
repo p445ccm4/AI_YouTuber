@@ -1,6 +1,6 @@
 import ollama
 
-def gen_response(user_message:str, history:list[dict], ollama_model:str, system_prompt:str="", stream=True):
+def gen_response(user_message:str, history:list[dict], ollama_model:str, system_prompt:str="", stream=True, keep_alive=None):
     # Handle User Text Input
     if user_message:
         history.append(
@@ -23,7 +23,8 @@ def gen_response(user_message:str, history:list[dict], ollama_model:str, system_
         for chunk in ollama.chat(
             model=ollama_model, 
             messages=history, 
-            stream=True
+            stream=True,
+            keep_alive=keep_alive
         ):
             response += chunk['message']['content']
 
@@ -32,7 +33,8 @@ def gen_response(user_message:str, history:list[dict], ollama_model:str, system_
         response = ollama.chat(
             model=ollama_model, 
             messages=history, 
-            stream=False
+            stream=False,
+            keep_alive=keep_alive
         )
         yield response['message']['content']
 

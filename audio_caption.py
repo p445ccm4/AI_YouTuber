@@ -57,12 +57,12 @@ class VideoCaptioner:
                             }
             )
             
-            for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False):
+            for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False, keep_alive=0):
                 response = r
             _, _, response = response.rpartition("</think>")
             response = response.strip()
             
-            comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nDeepSeek Response:\t{response}"
+            comparison = f"\nTranscription:\t{timed_caption["text"]}\nCaption:\t{caption}\nLLM Response:\t{response}"
             self.logger.info(comparison)
             if response.startswith("modified"):
                 try:

@@ -87,14 +87,14 @@ def create_demo():
                     new_topics_path = gr.Dropdown(label="Topic file name", choices=load_topic_paths(), value=load_topic_paths()[0], allow_custom_value=True)
                     series = gr.Dropdown(["Relationship", "Motivation", "MBTI", "Zodiac", "Other"], label="Series", allow_custom_value=True)
                     start_index = gr.Textbox("1", label="Start Index")
+                    ollama_model_transcribe = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:30b-a3b")
             transcribe_and_make_button = gr.Button("Transribe and Make Videos", variant="primary")
             transcribe_and_make_outputs = gr.Textbox(label="Progress Output", max_lines=30)
 
-            transcribe_and_make_button.click(fn=yt_url_to_proposals.make_proposals, inputs=[video_urls, new_topics_path, series, start_index], outputs=transcribe_and_make_outputs)
+            transcribe_and_make_button.click(fn=yt_url_to_proposals.make_proposals, inputs=[video_urls, new_topics_path, series, start_index, ollama_model_transcribe], outputs=transcribe_and_make_outputs)
 
             # TODO: add a new section underneath after generating topics file.
-            # Allow user to give follow-up ammendments for the proposal using google.genai
-            # https://ai.google.dev/gemini-api/docs/text-generation#multi-turn-conversations
+            # Allow user to give follow-up ammendments for the proposal
 
         with gr.Tab("Create or Edit Proposals"):
             def ask_LLM(proposal_content, modified_proposal_content, user_input, ollama_model):
@@ -110,14 +110,14 @@ def create_demo():
                     proposal_content = gr.Code(load_file_content, inputs=proposal_path, label="Proposal Content",language="json", max_lines=20)
                     save_proposal_button = gr.Button("Save Proposal", variant="primary")
                 with gr.Column():
-                    LLM_user_input = gr.Textbox(label="Ask LLM to modify the proposal")
                     with gr.Row():
+                        LLM_user_input = gr.Textbox(label="Ask LLM to modify the    proposal", submit_btn=True)
                         ollama_model_edit_proposal = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:30b-a3b")
-                        ask_llm_button = gr.Button("Ask LLM", variant="primary")
+                        # ask_llm_button = gr.Button("Ask LLM", variant="primary")
                     modified_proposal_content = gr.Code(None, label="Modified Proposal Content", language="json", max_lines=20)
                     apply_llm_button = gr.Button("Copy to left", variant="primary")
             
-            ask_llm_button.click(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LLM_user_input, ollama_model_edit_proposal], outputs=modified_proposal_content)
+            LLM_user_input.submit(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LLM_user_input, ollama_model_edit_proposal], outputs=modified_proposal_content)
             apply_llm_button.click(fn=lambda x: x, inputs=modified_proposal_content, outputs=proposal_content)
             save_proposal_button.click(save_file_content, inputs=[proposal_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
         

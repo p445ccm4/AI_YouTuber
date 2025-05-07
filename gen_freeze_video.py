@@ -68,8 +68,8 @@ class FreezeVideoGenerator:
         self.pipe = self.pipe.to('cuda') # Move model to GPU for generation
         output = self.pipe(
             prompt=prompt,
-            height=1280,
-            width=720,
+            height=720,
+            width=1280,
             num_inference_steps=50,
             guidance_scale=30.0,
         ).images[0]

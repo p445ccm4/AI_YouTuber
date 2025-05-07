@@ -10,28 +10,29 @@ SCRIPT_DIR = "inputs/proposals"
 SCRIPT_FILENAME = "ZZZ_write_proposals.py"
 SCRIPT_FULL_PATH = os.path.join(SCRIPT_DIR, SCRIPT_FILENAME)
 
-def get_transcripts(yt_url:str):
+async def get_transcripts(yt_url:str):
     video_id = yt_url.split("watch?v=")[-1].split("&")[0]
 
     transctips = ytt_api.fetch(video_id, languages=['en', 'zh-Hant', 'zh-Hans'])
 
     return " ".join([snippet.text for snippet in transctips])
 
-def get_write_proposal_py(transcription:str, series:str, start_index:int|str, ollama_model:str) -> str:
+async def get_write_proposal_py(transcription:str, series:str, start_index:int|str, ollama_model:str) -> str:
     start_index = int(start_index)
-    with open("inputs/System_Prompt_Proposal.txt", "r") as f:
+    with open("inputs/System_Prompt_Proposal_Batch.txt", "r") as f:
         system_prompt = f.read()
     
     contents=f"""
-        Make multiple proposals to cover the whole script. Put them into one single python script to save them into "inputs/proposals/{series}_{start_index}.json", "inputs/proposals/{series}_{start_index+1}.json" and so on. Print the base filenames at the end without printing extension ".json". 
+        Make multiple proposals to cover the whole script. Put them into one single python script to save them into "inputs/proposals/{series}_{start_index}.json", "inputs/proposals/{series}_{start_index+1}.json" and so on. Print the base filenames at the end without printing extension ".json". Do not reply anything other than the python script.
         Script:
         {transcription}
         """
     
-    for r in gen_response(contents, [], ollama_model, system_prompt, stream=False):
+    async for r in gen_response(contents, [], ollama_model, system_prompt, stream=False):
         response:str = r
     _, _, response = response.rpartition("</think>")
-    response = response.strip()
+    _, _, response = response.rpartition("```python")
+    response, _, _ = response.partition("```")
 
     # Write the content to the file
     with open(SCRIPT_FULL_PATH, "w") as f:
@@ -56,10 +57,6 @@ async def write_proposals_and_make_topics_file(output_topics_path: str):
         check=True,         # Raise CalledProcessError if command returns non-zero exit code
         capture_output=True,# Capture standard output and error
         text=True           # Decode output/error as text using default encoding
-        # No cwd is specified here because 'python inputs/proposals/ZZZ_write_proposals.py'
-        # is executed relative to the directory where *this* script is run.
-        # If you needed to run 'python ZZZ_write_proposals.py' *from* the inputs/proposals dir,
-        # you would use: command = ["python", SCRIPT_FILENAME], cwd=SCRIPT_DIR
     )
     yield "Script executed."
 
@@ -69,30 +66,40 @@ async def write_proposals_and_make_topics_file(output_topics_path: str):
         output_to_append += f"--- STDOUT ---\n{result.stdout}\n"
         # Append output to the specified file
         with open(output_topics_path, "a") as f:
-            f.write(result.stdout)
+            f.write("\n" + result.stdout)
     if result.stderr:
         # Note: Some tools write warnings/info to stderr even on success
         output_to_append += f"--- STDERR ---\n{result.stderr}\n"
     output_to_append += f"--- End Output ---\n"
     yield output_to_append
 
+async def split_line(line:str, proposal_dir:list[str] = ["inputs/proposals", "inputs/proposals/finished"]):
+    yt_url, series = line.split()
+    
+    topic_indices = []
+    for p_dir in proposal_dir:
+        topic_indices += [topic.removeprefix(f"{series}_").removesuffix(".json") for topic in os.listdir(p_dir) if topic.startswith(series)]
+    topic_indices = [int(index) for index in topic_indices if index.isdigit()]
+    
+    return yt_url, series, max(topic_indices)
 
-    return f"Successfully appended topics to '{output_topics_path}'. Refresh the page to see changes.\n"
-
-async def make_proposals(yt_urls:str, output_topics_path:str, series:str, start_index:int|str, ollama_model:str):
-    messages = "Start Generating... This may take a few minutes...\n"
+async def transcribe_and_make_proposals(yt_urls_and_series:str, output_topics_path:str, ollama_model:str):
+    messages = "Start Generating Proposals... This may take a few minutes...\n"
     yield messages
-    for yt_url in yt_urls.split("\n"):
-        if not yt_url.strip() or yt_url.startswith("#"):
+    for line in yt_urls_and_series.split("\n"):
+        if not line.strip() or line.startswith("#"):
             continue
-        
-        video_transcription = get_transcripts(yt_url)
+        yt_url, series, start_index = await split_line(line)
+
+        video_transcription = await get_transcripts(yt_url)
         messages += f"Successfully get transcription from {yt_url}.\n"
         yield messages
 
-        messages += get_write_proposal_py(video_transcription, series, start_index, ollama_model)
+        messages += await get_write_proposal_py(video_transcription, series, start_index, ollama_model)
         yield messages
 
         async for msg in write_proposals_and_make_topics_file(output_topics_path):
             messages += msg
             yield messages
+
+    yield f"Successfully appended all topics to '{output_topics_path}'. Refresh the page to see changes.\n"

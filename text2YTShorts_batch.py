@@ -9,7 +9,7 @@ import datetime
 import time
 import tqdm
 
-def text2YTShorts_batch(topic_file_path:str, send_email=False, ollama_model="gemma3:37b", logger=None): 
+async def text2YTShorts_batch(topic_file_path:str, send_email=False, ollama_model="qwen3:32b", logger=None): 
     with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
@@ -43,7 +43,8 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, ollama_model="gem
                 ollama_model=ollama_model,
                 logger=logger
             )
-            yield from shorts_maker.run()
+            async for _ in shorts_maker.run():
+                yield
             status = "Successful"
             trace = None
             logger.info(f"Finished processing {topic} successfully")

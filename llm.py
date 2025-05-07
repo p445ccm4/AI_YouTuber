@@ -1,6 +1,8 @@
-import ollama
+from ollama import AsyncClient
 
-def gen_response(user_message:str, history:list[dict], ollama_model:str, system_prompt:str="", stream=True, keep_alive=None):
+OLLAMA_CLIENT = AsyncClient()
+
+async def gen_response(user_message:str, history:list[dict], ollama_model:str, system_prompt:str="", stream=True, keep_alive=None):
     # Handle User Text Input
     if user_message:
         history.append(
@@ -20,7 +22,7 @@ def gen_response(user_message:str, history:list[dict], ollama_model:str, system_
     # Get response from LLM
     if stream:
         response = ""
-        for chunk in ollama.chat(
+        async for chunk in await OLLAMA_CLIENT.chat(
             model=ollama_model, 
             messages=history, 
             stream=True,
@@ -30,7 +32,7 @@ def gen_response(user_message:str, history:list[dict], ollama_model:str, system_
 
             yield response
     else:
-        response = ollama.chat(
+        response = await OLLAMA_CLIENT.chat(
             model=ollama_model, 
             messages=history, 
             stream=False,

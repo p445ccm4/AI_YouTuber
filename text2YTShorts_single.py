@@ -27,7 +27,7 @@ class YTShortsMaker:
             reference_audio_path = "inputs/reference_audio_man.wav"
         self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio_path=reference_audio_path)
 
-    def run(self):
+    async def run(self):
         os.makedirs(self.working_dir, exist_ok=True)
         failed_idx_traceback = {}
 
@@ -95,7 +95,7 @@ class YTShortsMaker:
 
                     yield
                     # 4. Get transcription
-                    caption_matched, timed_caption = self.audio_captioner.get_audio_timestamp(
+                    caption_matched, timed_caption = await self.audio_captioner.get_audio_timestamp(
                         caption=caption,
                         input_audio_path=f"{self.working_dir}/{index}.wav"
                     )

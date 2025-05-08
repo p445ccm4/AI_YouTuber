@@ -135,7 +135,7 @@ def create_demo():
                     f.write("stop")
                 gr.Warning("Process will stop after processing this video. Please wait...")
 
-            async def run_text2YTShorts_batch(topics_path, send_email, ollama_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
+            async def run_text2YTShorts_batch(topics_path, send_email, make_shorts, ollama_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
                 if interrupt_flag_path:
                     if os.path.exists(interrupt_flag_path):
                         os.remove(interrupt_flag_path)
@@ -144,7 +144,7 @@ def create_demo():
                 text2YTShorts_string_stream.truncate(0)
                 text2YTShorts_string_stream.seek(0)
 
-                async for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, logger=text2YTShorts_logger, ollama_model=ollama_model):
+                async for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, make_shorts, logger=text2YTShorts_logger, ollama_model=ollama_model):
                     with open(interrupt_flag_path, "r") as f:
                         flag = f.readline().strip()
                     yield text2YTShorts_string_stream.getvalue()
@@ -159,15 +159,17 @@ def create_demo():
             
             with gr.Row():
                 send_email_checkbox = gr.Checkbox(label="Send Email", value=False)
+                make_shorts_checkbox = gr.Checkbox(label="Make Shorts", value=False)
                 ollama_model_text2YTShorts = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:32b")
-                text2YTShorts_batch_generate_button = gr.Button("Generate", variant="primary")
-                text2YTShorts_batch_stop_button = gr.Button("Stop", variant="stop")
-                interrupt_flag_path = gr.Text(".gradio/interrupt_flag", visible=False)
+                with gr.Column():
+                    text2YTShorts_batch_generate_button = gr.Button("Generate", variant="primary")
+                    text2YTShorts_batch_stop_button = gr.Button("Stop", variant="stop")
+            interrupt_flag_path = gr.Text(".gradio/interrupt_flag", visible=False)
             text2YTShorts_batch_progress = gr.Textbox(label="Progress Bar")
             text2YTShorts_batch_outputs = gr.Textbox(text2YTShorts_string_stream.getvalue, label="Output", lines=30, max_lines=30)
             text2YTShorts_batch_generate_button.click(
                 fn=run_text2YTShorts_batch,
-                inputs=[topics_file_path, send_email_checkbox, ollama_model_text2YTShorts, interrupt_flag_path],
+                inputs=[topics_file_path, send_email_checkbox, make_shorts_checkbox, ollama_model_text2YTShorts, interrupt_flag_path],
                 outputs=text2YTShorts_batch_outputs,
                 show_progress_on=text2YTShorts_batch_progress,
                 show_progress="full",
@@ -276,7 +278,7 @@ def create_demo():
             outputs=make_proposals_outputs
         ).success(
             fn=run_text2YTShorts_batch,
-            inputs=[new_topics_file_path, send_email_checkbox, ollama_model_text2YTShorts, interrupt_flag_path],
+            inputs=[new_topics_file_path, send_email_checkbox, make_shorts_checkbox, ollama_model_text2YTShorts, interrupt_flag_path],
             outputs=text2YTShorts_batch_outputs,
             show_progress_on=text2YTShorts_batch_progress,
             show_progress="full",

@@ -6,14 +6,14 @@ import traceback
 import gen_audio, gen_freeze_video, audio_caption, concat, gen_music, upload_YouTube # gen_video
 
 class YTShortsMaker:
-    def __init__(self, json_file, working_dir, indices_to_process=None, ollama_model="gemma3:27b", logger=None, upload=False):
+    def __init__(self, json_file, working_dir, indices_to_process=None, make_shorts=True, ollama_model="gemma3:27b", logger=None, upload=False):
         self.json_file = json_file
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
         self.logger = logger
         # self.video_generator = gen_video.VideoGenerator(logger=self.logger)
-        self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(logger=self.logger)
-        self.audio_captioner = audio_caption.VideoCaptioner(ollama_model=ollama_model, logger=self.logger)
+        self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(make_shorts=make_shorts, logger=self.logger)
+        self.audio_captioner = audio_caption.VideoCaptioner(make_shorts=make_shorts, ollama_model=ollama_model, logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, logger=self.logger)
         self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)
         self.yt_uploader = upload_YouTube.YouTubeUploader(logger=self.logger) if upload else None
@@ -48,8 +48,7 @@ class YTShortsMaker:
                 self.freeze_video_generator.generate_freeze_video(
                     prompt=prompt,
                     index=-1,
-                    output_video_path=f"{self.working_dir}/-1.mp4",
-                    num_frames=5
+                    output_video_path=f"{self.working_dir}/-1.mp4"
                 )
 
                 yield

@@ -6,7 +6,8 @@ import json
 import llm
 
 class VideoCaptioner:
-    def __init__(self, ollama_model, logger):
+    def __init__(self, make_shorts, ollama_model, logger):
+        self.make_shorts = make_shorts
         self.logger = logger
         self.pipe = None
         self.ollama_model = ollama_model
@@ -97,15 +98,15 @@ class VideoCaptioner:
                     method="caption",
                     size=(video_clip.w - 200, video_clip.h - 200),
                     margin=(200, 200),
-                    font_size=75, 
+                    font_size=75 if self.make_shorts else 50, 
                     color="white", 
                     bg_color=None,
                     stroke_color="black", 
                     stroke_width=3,
                     text_align="center",
-                    vertical_align="top",
+                    vertical_align="top" if self.make_shorts else "bottom",
                 )
-                .with_position(("center", "top"))
+                .with_position(("center", "top") if self.make_shorts else ("center", "bottom"))
                 .with_duration(current_batch_duration)
                 .with_start(current_batch_start)
             )

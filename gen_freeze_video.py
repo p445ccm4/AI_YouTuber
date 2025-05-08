@@ -4,17 +4,14 @@ import moviepy
 import argparse
 import os
 import logging
-from google import genai
-from google.genai import types
 from PIL import Image
 from io import BytesIO
 
 class FreezeVideoGenerator:
-    def __init__(self, logger=None):
+    def __init__(self, make_shorts=True, logger=None):
+        self.make_shorts = make_shorts
         self.logger = logger
         self.pipe = None  # Initialize pipe to None, model is not loaded yet
-        with open("inputs/Gemini_API.txt", "r") as f:
-            self.gemini_client = genai.Client(api_key=f.readline().strip())
 
     def _load_model(self):
         if self.pipe is None: # Check if self.pipe is None
@@ -58,74 +55,64 @@ class FreezeVideoGenerator:
                 num_frames = audio_clip.duration * fps
                 audio_clip.close()
             else:
-                num_frames = 1 # For Thumbnail
+                num_frames = 5 if self.make_shorts else 20 # For Thumbnail
 
         num_frames = int(num_frames // 4 * 4 + 1)
-        self.logger.info(f"num_frames: {num_frames}")
+        duration = num_frames / fps
+        height = 1280 if self.make_shorts else 720
+        width = 720 if self.make_shorts else 1280
 
-        self._load_model() # Load model only when generate_freeze_video is called
-
-        self.pipe = self.pipe.to('cuda') # Move model to GPU for generation
+        self._load_model()
+        self.pipe = self.pipe.to('cuda')
         output = self.pipe(
             prompt=prompt,
-            height=720,
-            width=1280,
-            num_inference_steps=50,
+            height=height,
+            width=width,
+            num_inference_steps=40,
             guidance_scale=30.0,
         ).images[0]
-        self.pipe = self.pipe.to('cpu') # Move model back to CPU after generation to free GPU memory
+        self.pipe = self.pipe.to('cpu')
 
         # Create a video clip from the frames
-        clip = moviepy.ImageClip(np.array(output)).with_duration(num_frames / fps)
+        clip = moviepy.ImageClip(np.array(output)).with_duration(duration)
+
+        clip = self.make_random_effects(clip, width, height)
 
         # Write the video clip to a file
         clip.write_videofile(output_video_path, fps=fps)
-        self.logger.info(f"Video saved to {output_video_path}")
-    
-    def generate_freeze_video_with_words(self, prompt, index, output_video_path, fps=20, num_frames=None):
-        output_dir = os.path.dirname(output_video_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        self.logger.info(f"Video saved to {output_video_path}")   
 
-        if num_frames is None:
-            if index != -1:
-                audio_path = f"{output_dir}/{index}.wav"
-                audio_clip = moviepy.AudioFileClip(audio_path)
-                num_frames = audio_clip.duration * fps
-                audio_clip.close()
-            else:
-                num_frames = 1 # For Thumbnail
+    def make_random_effects(self, clip:moviepy.VideoClip, width, height):
+        effect = np.random.choice(["enlarge", "shrink", "scroll up", "scroll down", "scroll left", "scroll right"])
 
-        num_frames = int(num_frames // 4 * 4 + 1)
-        self.logger.info(f"num_frames: {num_frames}")
-
-        contents = ("Create an 720x1280 portrait image. The prompt is: " + prompt)
-
-        for i in range(5):
-            response = self.gemini_client.models.generate_content(
-                model="gemini-2.0-flash-exp-image-generation",
-                contents=contents,
-                config=types.GenerateContentConfig(response_modalities=['Text', 'Image'])
-            )
-
-            for part in response.candidates[0].content.parts:
-                if part.inline_data is not None:
-                    output = Image.open(BytesIO(part.inline_data.data))
-                    w, h = output.size
-                    if w <= h:  # Check if image is portrait (height >= width)
-                        output = output.resize((720, 1280))
-                        break
-            
-            if i == 4:
-                raise Exception("Failed to generate image")
+        if effect == "enlarge":
+            effects = [moviepy.vfx.Resize(lambda t: 1 + 0.02*t)]
+        elif effect == "shrink":
+            effects = [moviepy.vfx.Resize(lambda t: 1.1 - 0.02*t)]
+        elif effect == "scroll up":
+            effects = [
+                moviepy.vfx.Resize(1.1),
+                moviepy.vfx.Scroll(w=width, h=height, y_speed=height*-0.02, y_start=int(height*0.1))
+                ]
+        elif effect == "scroll down":
+            effects = [
+                moviepy.vfx.Resize(1.1),
+                moviepy.vfx.Scroll(w=width, h=height, y_speed=height*0.02)
+                ]
+        elif effect == "scroll left":
+            effects = [
+                moviepy.vfx.Resize(1.1),
+                moviepy.vfx.Scroll(w=width, h=height, x_speed=width*-0.02, x_start=int(width*0.1))
+                ]
+        elif effect == "scroll right":
+            effects = [
+                moviepy.vfx.Resize(1.1),
+                moviepy.vfx.Scroll(w=width, h=height, x_speed=width*0.02)
+                ]
         
-        # Create a video clip from the frames
-        clip = moviepy.ImageClip(np.array(output)).with_duration(num_frames / fps)
-
-        # Write the video clip to a file
-        clip.write_videofile(output_video_path, fps=fps)
-        self.logger.info(f"Video saved to {output_video_path}")
-    
+        clip = clip.with_effects(effects).with_background_color((width, height), (0, 0, 0), opacity=0)
+        
+        return clip
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -1,14 +1,13 @@
+from typing import Literal
 import numpy as np
 import torch
 import moviepy
 import argparse
 import os
 import logging
-from PIL import Image
-from io import BytesIO
 
 class FreezeVideoGenerator:
-    def __init__(self, make_shorts=True, logger=None):
+    def __init__(self, make_shorts=False, logger=None):
         self.make_shorts = make_shorts
         self.logger = logger
         self.pipe = None  # Initialize pipe to None, model is not loaded yet
@@ -76,14 +75,18 @@ class FreezeVideoGenerator:
         # Create a video clip from the frames
         clip = moviepy.ImageClip(np.array(output)).with_duration(duration)
 
-        clip = self.make_random_effects(clip, width, height)
+        if index == -1:
+            clip = self.make_effects(clip, width, height, "enlarge")
+        else:
+            clip = self.make_effects(clip, width, height)
 
         # Write the video clip to a file
-        clip.write_videofile(output_video_path, fps=fps)
+        clip.write_videofile(output_video_path, fps=fps, ffmpeg_params=["-hide_banner", "-loglevel", "error"])
         self.logger.info(f"Video saved to {output_video_path}")   
 
-    def make_random_effects(self, clip:moviepy.VideoClip, width, height):
-        effect = np.random.choice(["enlarge", "shrink", "scroll up", "scroll down", "scroll left", "scroll right"])
+    def make_effects(self, clip:moviepy.VideoClip, width, height, effect:Literal["enlarge", "shrink", "scroll up", "scroll down", "scroll left", "scroll right"]=None):
+        if not effect:
+            effect = np.random.choice(["enlarge", "shrink", "scroll up", "scroll down", "scroll left", "scroll right"])
 
         if effect == "enlarge":
             effects = [moviepy.vfx.Resize(lambda t: 1 + 0.02*t)]
@@ -112,6 +115,8 @@ class FreezeVideoGenerator:
         
         clip = clip.with_effects(effects).with_background_color((width, height), (0, 0, 0), opacity=0)
         
+        # Smooth the video
+        clip = clip.with_effects([moviepy.vfx.SuperSample(0.05, 10)])
         return clip
 
 if __name__ == "__main__":
@@ -123,7 +128,8 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--prompt", type=str, required=True, help="Prompt")
     parser.add_argument("-o", "--output_video_path", type=str, default="outputs/HunYuan/output.mp4", help="Output video path")
     parser.add_argument("-n", "--num_frames", type=int, default=None, help="Number of frames to generate")
+    parser.add_argument("-s", "--make_shorts", action="store_true", help="Make shorts")
     args = parser.parse_args()
 
-    generator = FreezeVideoGenerator(logger)
+    generator = FreezeVideoGenerator(logger=logger)
     generator.generate_freeze_video(args.prompt, args.index, args.output_video_path, num_frames=args.num_frames)

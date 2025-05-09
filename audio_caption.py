@@ -29,7 +29,7 @@ class VideoCaptioner:
             )
             self.logger.info("Whisper model loaded.")
 
-    async def get_audio_timestamp(self, caption, input_audio_path):
+    def get_audio_timestamp(self, caption, input_audio_path):
         # Whisper inference
         self._load_model()
         self.pipe.model.to("cuda")
@@ -58,7 +58,7 @@ class VideoCaptioner:
                             }
             )
             
-            async for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False, keep_alive=0):
+            for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False, keep_alive=0):
                 response = r
             _, _, response = response.rpartition("</think>")
             response = response.strip()

@@ -101,12 +101,12 @@ def create_demo():
             # Allow user to give follow-up ammendments for the proposal
 
         with gr.Tab("Create or Edit Proposals"):
-            async def ask_LLM(proposal_content, modified_proposal_content, user_input, ollama_model):
+            def ask_LLM(proposal_content, modified_proposal_content, user_input, ollama_model):
                 proposal_content = modified_proposal_content or proposal_content
                 with open("inputs/System_Prompt_Proposal_Single.txt", "r") as f:
                     system_prompt = f.read()
                 message = "\n\n".join([user_input, proposal_content])
-                async for response in llm.gen_response(message, [], ollama_model, system_prompt):
+                for response in llm.gen_response(message, [], ollama_model, system_prompt):
                     yield response
                 _, _, response = response.rpartition("/<think>")
 
@@ -135,7 +135,7 @@ def create_demo():
                     f.write("stop")
                 gr.Warning("Process will stop after processing this video. Please wait...")
 
-            async def run_text2YTShorts_batch(topics_path, send_email, make_shorts, ollama_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
+            def run_text2YTShorts_batch(topics_path, send_email, make_shorts, ollama_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
                 if interrupt_flag_path:
                     if os.path.exists(interrupt_flag_path):
                         os.remove(interrupt_flag_path)
@@ -144,7 +144,7 @@ def create_demo():
                 text2YTShorts_string_stream.truncate(0)
                 text2YTShorts_string_stream.seek(0)
 
-                async for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, make_shorts, logger=text2YTShorts_logger, ollama_model=ollama_model):
+                for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, make_shorts, logger=text2YTShorts_logger, ollama_model=ollama_model):
                     with open(interrupt_flag_path, "r") as f:
                         flag = f.readline().strip()
                     yield text2YTShorts_string_stream.getvalue()

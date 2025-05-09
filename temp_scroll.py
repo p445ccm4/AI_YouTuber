@@ -1,16 +1,16 @@
-import moviepy
+import moviepy as mp
 import random
 
-def concat_motion_blur(clips:list[moviepy.VideoClip], transition_duration=0.3):
+def concat_with_motion_blur(clips:list[mp.VideoClip], transition_duration=0.3):
     """
-    Create a motion blur transition between two video clips.
+    Concat a list of video clips with motion blur sliding transition.
     
     Args:
-        clips (list[moviepy.VideoClip]): List of video clips to apply the transition to.
+        clips (list[mp.VideoClip]): List of video clips to apply the transition to.
         transition_duration (float): Duration of the transition in seconds.
         
     Returns:
-        moviepy.VideoClip: Video clip with motion blur transition applied.
+        mp.VideoClip: Video clip with motion blur transition applied.
     """
     if len(clips) < 2:
         raise ValueError("At least two clips are required for the transition.")
@@ -20,28 +20,47 @@ def concat_motion_blur(clips:list[moviepy.VideoClip], transition_duration=0.3):
 
         slide_side = random.choice([("top", "bottom"), ("bottom", "top"), ("left", "right"), ("right", "left")])
 
-        transition_clip = moviepy.CompositeVideoClip([
-                clip_A.subclipped(-transition_duration, None).with_effects([moviepy.vfx.SlideOut(transition_duration, slide_side[0])]),
-                clip_B.subclipped(0, transition_duration).with_effects([moviepy.vfx.SlideIn(transition_duration, slide_side[1])])
-            ]).with_effects([moviepy.vfx.AccelDecel(transition_duration, 3, 1)])
-        transition_clip.write_videofile("temp.mp4", fps=20)
-        transition_clip = moviepy.VideoFileClip("temp.mp4")
-        clips_with_effects = [
-            clip_A.subclipped(0, -transition_duration),
+        transition_clip = mp.CompositeVideoClip([
+                clip_A.subclipped(-transition_duration, None).with_effects([mp.vfx.SlideOut(transition_duration, slide_side[0])]),
+                clip_B.subclipped(0, transition_duration).with_effects([mp.vfx.SlideIn(transition_duration, slide_side[1])])
+            ]).with_effects([
+                mp.vfx.AccelDecel(transition_duration, 3, 1),
+                mp.vfx.SuperSample(0.01, 10)
+                ])
+        
+        clips_to_extend = [
+            mp.CompositeVideoClip([clip_A.subclipped(0, -transition_duration)]),
             transition_clip,
-            clip_B.subclipped(transition_duration, None)
+            mp.CompositeVideoClip([clip_B.subclipped(transition_duration, None)])
         ]
-
-        output_clips.extend(clips_with_effects)
+        output_clips.extend(clips_to_extend)
     
-    final_clip = moviepy.concatenate_videoclips(output_clips)
-    return final_clip.with_effects([moviepy.vfx.SuperSample(0.02, 5)])
+    final_clip = mp.concatenate_videoclips(output_clips)
+    return final_clip
 
-clip_A = moviepy.VideoFileClip("output_enlarge.mp4")
-clip_B = moviepy.VideoFileClip("output_scroll up.mp4")
-w, h = clip_A.size
-clip = concat_motion_blur([clip_A, clip_B])
-clip.write_videofile("output_transition.mp4", fps=20)
+def make_magifying_start(clip:mp.VideoClip|mp.CompositeVideoClip, duration=0.3, magnification=5.0):
+    w, h = clip.size
+    clip = clip.with_effects_on_subclip(
+        effects=[
+            mp.vfx.Resize((lambda t: magnification - t*(magnification-1)/duration), h, w),
+            mp.vfx.AccelDecel(duration, 3, 1)
+        ],
+        start_time=0,
+        end_time=duration
+    )
+    return clip.with_background_color(
+        (w, h), (0, 0, 0), opacity=0
+        ).with_effects_on_subclip(
+            [mp.vfx.SuperSample(0.01, 10)],
+            start_time=0,
+            end_time=duration
+        )
 
-smooth_clip = moviepy.VideoFileClip("output_transition.mp4")
-smooth_clip.write_videofile("output_transition_smooth.mp4", fps=20)
+clips = [mp.VideoFileClip(f"outputs/20250506_Relationship_sign_women_like_men_47/{i}_captioned.mp4").with_effects([mp.vfx.SuperSample(0.05, 10)]) for i in range(-1, 3)]
+
+clip = concat_with_motion_blur(clips)
+
+clip = make_magifying_start(clip)
+
+clip.write_videofile("output_fansy.mp4", fps=20)
+

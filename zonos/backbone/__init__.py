@@ -1,11 +1,8 @@
 BACKBONES = {}
 
-try:
-    from ._mamba_ssm import MambaSSMZonosBackbone
+from ._mamba_ssm import MambaSSMZonosBackbone
 
-    BACKBONES["mamba_ssm"] = MambaSSMZonosBackbone
-except ImportError:
-    pass
+BACKBONES["mamba_ssm"] = MambaSSMZonosBackbone
 
 from ._torch import TorchZonosBackbone
 

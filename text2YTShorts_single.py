@@ -27,7 +27,7 @@ class YTShortsMaker:
             reference_audio_path = "inputs/reference_audio_man.wav"
         self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio_path=reference_audio_path)
 
-    async def run(self):
+    def run(self):
         os.makedirs(self.working_dir, exist_ok=True)
         failed_idx_traceback = {}
 
@@ -79,7 +79,6 @@ class YTShortsMaker:
             caption = element.get('caption')
             prompt = element.get('prompt')
             voiceover = element.get('voiceover', caption)
-            has_words = element.get('has_words', False)
 
             try:
                 speaking_rate = 20
@@ -94,7 +93,7 @@ class YTShortsMaker:
 
                     yield
                     # 4. Get transcription
-                    caption_matched, timed_caption = await self.audio_captioner.get_audio_timestamp(
+                    caption_matched, timed_caption = self.audio_captioner.get_audio_timestamp(
                         caption=caption,
                         input_audio_path=f"{self.working_dir}/{index}.wav"
                     )
@@ -114,22 +113,13 @@ class YTShortsMaker:
                                          {timed_caption}
                                         """)
 
-                if has_words:
-                    yield
-                    # 5a. Generate freeze video with Gemini
-                    self.freeze_video_generator.generate_freeze_video_with_words(
-                        prompt=prompt,
-                        index=index,
-                        output_video_path=f"{self.working_dir}/{index}.mp4",
-                    )
-                else:
-                    yield
-                    # 5b. Generate freeze video
-                    self.freeze_video_generator.generate_freeze_video(
-                        prompt=prompt,
-                        index=index,
-                        output_video_path=f"{self.working_dir}/{index}.mp4",
-                    )
+                yield
+                # 5. Generate freeze video
+                self.freeze_video_generator.generate_freeze_video(
+                    prompt=prompt,
+                    index=index,
+                    output_video_path=f"{self.working_dir}/{index}.mp4",
+                )
 
                 yield
                 # 6. Add audio and caption to video

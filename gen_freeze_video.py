@@ -54,7 +54,7 @@ class FreezeVideoGenerator:
                 num_frames = audio_clip.duration * fps
                 audio_clip.close()
             else:
-                num_frames = 5 if self.make_shorts else 20 # For Thumbnail
+                num_frames = 5 if self.make_shorts else 1 * fps # For Thumbnail
 
         num_frames = int(num_frames // 4 * 4 + 1)
         duration = num_frames / fps
@@ -115,8 +115,8 @@ class FreezeVideoGenerator:
         
         clip = clip.with_effects(effects).with_background_color((width, height), (0, 0, 0), opacity=0)
         
-        # Smooth the video
-        clip = clip.with_effects([moviepy.vfx.SuperSample(0.05, 10)])
+        # # Smooth the video
+        # clip = clip.with_effects([moviepy.vfx.SuperSample(0.05, 10)])
         return clip
 
 if __name__ == "__main__":

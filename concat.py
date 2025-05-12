@@ -8,6 +8,8 @@ class VideoConcatenator:
     def __init__(self, working_dir, logger=None):
         self.working_dir = working_dir
         self.logger = logger
+        self.swoosh_transition = mp.ColorClip(size=(1280, 720), is_mask=True).with_audio(mp.AudioFileClip("inputs/swoosh.mp3").with_volume_scaled(0.5))
+        self.swoosh_start = mp.ColorClip(size=(1280, 720), is_mask=True).with_audio(mp.AudioFileClip("inputs/swoosh_1s.mp3").with_volume_scaled(0.5))
 
     def sort_by_startint(self, a):
         return int(a.split("_")[0])
@@ -25,24 +27,26 @@ class VideoConcatenator:
         """
         if len(clips) < 2:
             raise ValueError("At least two clips are required for the transition.")
-        output_clips = [clips[0]]
+        
+        output_clips = [mp.CompositeVideoClip([clips[0]])]
         for clip_B in clips[1:]:
             clip_A = output_clips.pop()
 
             slide_side = random.choice([("top", "bottom"), ("bottom", "top"), ("left", "right"), ("right", "left")])
 
             transition_clip = mp.CompositeVideoClip([
-                    clip_A.subclipped(-transition_duration, None).with_effects([mp.vfx.SlideOut(transition_duration, slide_side[0])]),
-                    clip_B.subclipped(0, transition_duration).with_effects([mp.vfx.SlideIn(transition_duration, slide_side[1])])
-                ]).with_effects([
-                    mp.vfx.AccelDecel(transition_duration, 3, 1),
-                    mp.vfx.SuperSample(0.01, 10)
-                    ])
+                self.swoosh_transition.with_duration(transition_duration),
+                clip_A.subclipped(-transition_duration, None).with_effects([mp.vfx.SlideOut(transition_duration, slide_side[0])]),
+                clip_B.to_ImageClip(t=0.01, duration=transition_duration).with_effects([mp.vfx.SlideIn(transition_duration, slide_side[1])]),
+            ]).with_effects([
+                mp.vfx.AccelDecel(transition_duration, 3, 1),
+                mp.vfx.SuperSample(0.01, 10)
+            ])
             
             clips_to_extend = [
-                mp.CompositeVideoClip([clip_A.subclipped(0, -transition_duration)]),
+                clip_A.subclipped(0, -transition_duration),
                 transition_clip,
-                mp.CompositeVideoClip([clip_B.subclipped(transition_duration, None)])
+                mp.CompositeVideoClip([clip_B])
             ]
             output_clips.extend(clips_to_extend)
         
@@ -51,20 +55,20 @@ class VideoConcatenator:
 
     def make_magifying_start(self, clip:mp.VideoClip|mp.CompositeVideoClip, duration=0.3, magnification=5.0):
         w, h = clip.size
-        clip = clip.with_effects_on_subclip(
-            effects=[
-                mp.vfx.Resize((lambda t: magnification - t*(magnification-1)/duration), h, w),
-                mp.vfx.AccelDecel(duration, 3, 1)
-            ],
-            start_time=0,
-            end_time=duration
-        )
-        return clip.with_background_color(
-            (w, h), (0, 0, 0), opacity=0
-            ).with_effects_on_subclip(
-                [mp.vfx.SuperSample(0.01, 10)],
+        clip = mp.CompositeVideoClip([
+            self.swoosh_start.with_duration(1),
+            clip.with_effects_on_subclip(
+                effects=[
+                    mp.vfx.Resize((lambda t: magnification - t*(magnification-1)/duration), h, w),
+                    mp.vfx.AccelDecel(duration, 3, 1),
+                    mp.vfx.Crop(x_center=w/2, y_center=h/2, width=w, height=h)
+                ],
                 start_time=0,
                 end_time=duration
+            ),
+        ])
+        return clip.with_background_color(
+            (w, h), (0, 0, 0), opacity=0
         )
 
     def concatenate_videos(self):
@@ -77,6 +81,9 @@ class VideoConcatenator:
         # Concatenate all clips
         concat_clip = self.concat_with_motion_blur(clips)
         concat_clip = self.make_magifying_start(concat_clip)
+        concat_clip = concat_clip.with_effects([
+            mp.vfx.SuperSample(0.01, 10)
+        ])
         concat_clip.write_videofile(os.path.join(self.working_dir, "concat.mp4"), ffmpeg_params=["-hide_banner", "-loglevel", "error"])
 
         self.logger.info("Video concatenation complete.")

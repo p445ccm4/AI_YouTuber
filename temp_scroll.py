@@ -56,7 +56,7 @@ def make_magifying_start(clip:mp.VideoClip|mp.CompositeVideoClip, duration=0.3, 
             end_time=duration
         )
 
-clips = [mp.VideoFileClip(f"outputs/20250506_Relationship_sign_women_like_men_47/{i}_captioned.mp4").with_effects([mp.vfx.SuperSample(0.05, 10)]) for i in range(-1, 3)]
+clips = [mp.VideoFileClip(f"outputs/20250506_Relationship_sign_women_like_men_47/{i}_captioned.mp4") for i in range(-1, 3)]
 
 clip = concat_with_motion_blur(clips)
 

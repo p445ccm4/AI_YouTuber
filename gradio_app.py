@@ -77,7 +77,11 @@ def create_demo():
                 print_status_outputs = gr.Code(label="Current Status", language='shell', interactive=True, max_lines=30)
                 apply_status_button = gr.Button("Copy to left", variant="huggingface")
                 
-            apply_status_button.click(fn=lambda x: x, inputs=print_status_outputs, outputs=topics_content)
+            apply_status_button.click(
+                fn=lambda x: x, inputs=print_status_outputs, outputs=topics_content
+            ).success(
+                save_file_content, inputs=[topics_file_path, topics_content], outputs=save_topics_outputs
+            )
             print_status_button.click(fn=ZZZ_print_status.print_status,inputs=topics_file_path, outputs=print_status_outputs)
             save_topics_button.click(
                 save_file_content, inputs=[topics_file_path, topics_content], outputs=save_topics_outputs
@@ -195,10 +199,12 @@ def create_demo():
                 final_video_path = os.path.join(topic_dir, "final.mp4")
                 if os.path.exists(final_video_path):
                     video_paths.append(final_video_path)
-                for i in range(-1, 25):
-                    sub_video_path = os.path.join(topic_dir, f"{i}_captioned.mp4")
-                    if os.path.exists(sub_video_path):
-                        video_paths.append(sub_video_path)
+                for filename in os.listdir(topic_dir):
+                    if not filename.endswith("_captioned.mp4"):
+                        continue
+                    sub_video_path = os.path.join(topic_dir, filename)
+                    video_paths.append(sub_video_path)
+                video_paths.sort(key=lambda path: int(os.path.basename(path).removesuffix("_captioned.mp4")))
                 first_value = video_paths[0] if video_paths else None
                 return gr.Dropdown(choices=video_paths, value=first_value), video_paths
 
@@ -292,5 +298,5 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=1388,
-        share=True,
+        # share=True,
         )

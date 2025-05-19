@@ -1,10 +1,10 @@
 import argparse
-import os
 import logging
+import os
 from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, afx
+import numpy as np
 import soundfile as sf
 from diffusers import StableAudioPipeline
-import torch
 
 class MusicGenerator:
     def __init__(self, logger=None):
@@ -19,19 +19,22 @@ class MusicGenerator:
                 ).to("cpu")
             self.logger.info("Stable Audio model loaded.")
 
-    def generate_music(self, prompt, output_audio_path):
+    def generate_music(self, prompt, input_video_path, output_audio_path):
+        n_waveforms = VideoFileClip(input_video_path).duration // 47
         self._load_model()
         # run the generation
         self.pipe = self.pipe.to("cuda")
-        audio = self.pipe(
+        audios = self.pipe(
             prompt,
             negative_prompt="low quality, human vocal voice",
             num_inference_steps=200,
-            audio_end_in_s=47.55,
-            num_waveforms_per_prompt=3,
+            num_waveforms_per_prompt=n_waveforms,
         ).audios
         self.pipe = self.pipe.to("cpu")
-        output = audio[0].T.float().cpu().numpy()
+        
+        output = audios.float().cpu().numpy()
+        output = output.transpose(0, 2, 1)
+        output = np.concatenate(output, axis=0)
         sf.write(output_audio_path, output, self.pipe.vae.sampling_rate)
         self.logger.info(f"Generated music saved to {output_audio_path}")
 

@@ -16,7 +16,7 @@ async def check_videos(folder_path, topic, n_caption):
     
     failed_indices = []
     if not os.path.exists(music_path):
-        failed_indices.append("99")
+        failed_indices.append("-2")
 
     for i in range(-1, n_caption):
         captioned_file = os.path.join(folder_path, f"{i}_captioned.mp4")

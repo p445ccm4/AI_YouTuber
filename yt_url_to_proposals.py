@@ -28,7 +28,7 @@ async def get_write_proposal_py(transcription:str, series:str, start_index:int|s
         {transcription}
         """
     
-    async for r in gen_response(contents, [], ollama_model, system_prompt, stream=False):
+    for r in gen_response(contents, [], ollama_model, system_prompt, stream=False):
         response:str = r
     _, _, response = response.rpartition("</think>")
     _, _, response = response.rpartition("```python")
@@ -81,7 +81,7 @@ async def split_line(line:str, proposal_dir:list[str] = ["inputs/proposals", "in
         topic_indices += [topic.removeprefix(f"{series}_").removesuffix(".json") for topic in os.listdir(p_dir) if topic.startswith(series)]
     topic_indices = [int(index) for index in topic_indices if index.isdigit()]
     
-    return yt_url, series, max(topic_indices)
+    return yt_url, series, max(topic_indices, default=1)
 
 async def transcribe_and_make_proposals(yt_urls_and_series:str, output_topics_path:str, ollama_model:str):
     messages = "Start Generating Proposals... This may take a few minutes...\n"

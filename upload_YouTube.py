@@ -30,7 +30,7 @@ class YouTubeUploader:
         flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
             self.CLIENT_SECRETS_FILE_PATH, self.SCOPES)
 
-        credentials = flow.run_local_server(timeout=10)
+        credentials = flow.run_local_server(timeout=10, browser="microsoft-edge")
         self.youtube = googleapiclient.discovery.build(
             "youtube", "v3", credentials=credentials)
 

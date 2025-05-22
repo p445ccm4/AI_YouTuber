@@ -195,16 +195,19 @@ def create_demo():
             def load_video_paths(topics_path, topic, output_dir="outputs"):
                 prefix = os.path.basename(topics_path).split(".")[0]
                 topic_dir = os.path.join(output_dir, f"{prefix}_{topic}")
+
                 video_paths = []
-                final_video_path = os.path.join(topic_dir, "final.mp4")
-                if os.path.exists(final_video_path):
-                    video_paths.append(final_video_path)
                 for filename in os.listdir(topic_dir):
                     if not filename.endswith("_captioned.mp4"):
                         continue
                     sub_video_path = os.path.join(topic_dir, filename)
                     video_paths.append(sub_video_path)
                 video_paths.sort(key=lambda path: int(os.path.basename(path).removesuffix("_captioned.mp4")))
+                
+                final_video_path = os.path.join(topic_dir, "final.mp4")
+                if os.path.exists(final_video_path):
+                    video_paths.insert(0, final_video_path)
+                
                 first_value = video_paths[0] if video_paths else None
                 return gr.Dropdown(choices=video_paths, value=first_value), video_paths
 

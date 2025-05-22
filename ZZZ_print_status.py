@@ -2,7 +2,7 @@ import os
 import json
 import argparse
 
-async def check_videos(folder_path, topic, n_caption):
+async def check_videos(folder_path, topic, indices):
     
     final_video_path = os.path.join(folder_path, f"final.mp4")
     music_path = os.path.join(folder_path, f"music.wav")
@@ -18,15 +18,14 @@ async def check_videos(folder_path, topic, n_caption):
     if not os.path.exists(music_path):
         failed_indices.append("-2")
 
-    for i in range(-1, n_caption):
+    for i in indices:
         captioned_file = os.path.join(folder_path, f"{i}_captioned.mp4")
         if not os.path.exists(captioned_file):
             failed_indices.append(str(i))
     if not os.path.exists(thumbnail_path) and "-1" not in failed_indices:
         failed_indices.append("-1")
 
-    if failed_indices:
-        return "partially done", topic + ' ' + ' '.join(failed_indices)
+    return "partially done", topic + ' ' + ' '.join(failed_indices)
 
 
 async def print_status(input_topics, outputs_path = "outputs", proposal_path = "inputs/proposals"):
@@ -42,9 +41,9 @@ async def print_status(input_topics, outputs_path = "outputs", proposal_path = "
         with open(f"{proposal_path}/{folder_name.split("_", maxsplit=1)[-1]}.json", 'r') as f:
             data = json.load(f)
             title = data.get("thumbnail", {}).get("long_title")
-            n_caption = len(data.get("script"))
+            indices = [int(caption.get("index")) for caption in data.get("script")]
 
-        status, line = await check_videos(folder_path, topic, n_caption)
+        status, line = await check_videos(folder_path, topic, indices)
         if status == "finished":
             line += f" \"{title}\""
         status_all[status] = [*status_all.get(status, []), line]

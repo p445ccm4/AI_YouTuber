@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, afx
 import numpy as np
 import soundfile as sf
@@ -20,21 +19,36 @@ class MusicGenerator:
             self.logger.info("Stable Audio model loaded.")
 
     def generate_music(self, prompt, input_video_path, output_audio_path):
-        n_waveforms = VideoFileClip(input_video_path).duration // 47
+        n_waveforms = int(VideoFileClip(input_video_path).duration / 47)
         self._load_model()
+
         # run the generation
         self.pipe = self.pipe.to("cuda")
-        audios = self.pipe(
+
+        all_outputs = []
+        batch_size = 4
+        
+        for i in range(0, n_waveforms, batch_size):
+            # Calculate how many waveforms to generate in this batch
+            current_batch_size = min(batch_size, n_waveforms - i)
+            
+            audios = self.pipe(
             prompt,
             negative_prompt="low quality, human vocal voice",
-            num_inference_steps=200,
-            num_waveforms_per_prompt=n_waveforms,
-        ).audios
+            num_inference_steps=100,
+            num_waveforms_per_prompt=current_batch_size,
+            ).audios
+            
+            output = audios.float().cpu().numpy()
+            output = output.transpose(0, 2, 1)
+            all_outputs.append(output)
+            
+            self.logger.info(f"Generated batch {i//batch_size + 1} of {(n_waveforms + batch_size - 1)//batch_size}")
+            
         self.pipe = self.pipe.to("cpu")
+
+        output = np.concatenate([np.concatenate(batch, axis=0) for batch in all_outputs], axis=0)
         
-        output = audios.float().cpu().numpy()
-        output = output.transpose(0, 2, 1)
-        output = np.concatenate(output, axis=0)
         sf.write(output_audio_path, output, self.pipe.vae.sampling_rate)
         self.logger.info(f"Generated music saved to {output_audio_path}")
 
@@ -76,10 +90,10 @@ if __name__ == "__main__":
 
     music_adder = MusicGenerator(logger=logging.getLogger(__name__))
 
-    if not args.music_path and args.prompt:
-        args.music_path = "generated_music.wav"  # default name
-        music_adder.generate_music(args.prompt, args.music_path)
-    elif not args.music_path and not args.prompt:
+    if not args.music_path and not args.prompt:
         raise ValueError("Either music_path or prompt must be provided.")
+    if not args.music_path:
+        args.music_path = "music.wav"  # default name
 
+    # music_adder.generate_music(args.prompt, args.input_video_path, args.music_path)
     music_adder.add_background_music(args.input_video_path, args.music_path, args.output_video_path)

@@ -38,7 +38,7 @@ class AudioGenerator:
         #     else:
         #         self.reference_audio_text = "[S1] Hey guys! What do women really want in a man? Not what do we tell you we want, what do we think we want, but what do we actually respond to? What is that turns us on? What is attractive to us?"
 
-    def generate_audio(self, caption, output_audio_path, speaking_rate=20):
+    def generate_audio(self, caption, output_audio_path, speaking_rate=15):
         if os.path.exists(output_audio_path):
             os.remove(output_audio_path)
         assert caption != "" and caption is not None, "Caption/Voiceover cannot be empty."

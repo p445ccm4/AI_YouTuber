@@ -148,7 +148,7 @@ class YTShortsMaker:
                 yield
                 # 8. Generate background music
                 if self.indices_to_process is not None and -2 not in self.indices_to_process and os.path.exists(f"{self.working_dir}/music.wav"):
-                    self.logger.debug(f"Skipping index -2 as it's not in the provided indices.")
+                    self.logger.debug(f"Skipping music generation as -2 is not in the provided indices.")
                 else:
                     self.bg_music_adder.generate_music(
                         prompt=music, 

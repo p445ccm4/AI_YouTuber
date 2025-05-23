@@ -4,6 +4,9 @@ import os
 import argparse
 import logging
 
+def sort_by_startint(a):
+    return int(a.split("_")[0])
+
 class VideoConcatenator:
     def __init__(self, working_dir, logger=None):
         self.working_dir = working_dir
@@ -11,8 +14,6 @@ class VideoConcatenator:
         self.swoosh_transition = mp.ColorClip(size=(1280, 720), is_mask=True).with_audio(mp.AudioFileClip("inputs/swoosh.mp3").with_volume_scaled(0.3))
         self.swoosh_start = mp.ColorClip(size=(1280, 720), is_mask=True).with_audio(mp.AudioFileClip("inputs/swoosh_1s.mp3").with_volume_scaled(0.5))
 
-    def sort_by_startint(self, a):
-        return int(a.split("_")[0])
 
     def concat_with_motion_blur(self, clips:list[mp.VideoClip], transition_duration=0.3):
         """
@@ -73,7 +74,7 @@ class VideoConcatenator:
 
     def concatenate_videos(self):
         vid_list = [f for f in os.listdir(self.working_dir) if f.endswith("_captioned.mp4")]
-        vid_list = sorted(vid_list, key=self.sort_by_startint)
+        vid_list = sorted(vid_list, key=sort_by_startint)
         clips = [mp.VideoFileClip(os.path.join(self.working_dir, f)) for f in vid_list]
 
         self.logger.info(f"clips: {vid_list}")

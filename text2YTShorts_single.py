@@ -10,7 +10,7 @@ class YTShortsMaker:
         self.json_file = json_file
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
-        self.logger = logger
+        self.logger:logging.Logger = logger
         # self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(make_shorts=make_shorts, logger=self.logger)
         self.audio_captioner = audio_caption.VideoCaptioner(make_shorts=make_shorts, ollama_model=ollama_model, logger=self.logger)
@@ -143,18 +143,20 @@ class YTShortsMaker:
             try:
                 yield
                 # 7. Concatenate videos
-                self.concatenator.concatenate_videos()
+                if self.indices_to_process is not None and -2 not in self.indices_to_process and os.path.exists(f"{self.working_dir}/concat.mp4"):
+                    self.logger.warn(f"Skipping concat as -2 is not in the provided indices.")
+                else:
+                    self.concatenator.concatenate_videos()
                     
                 yield
                 # 8. Generate background music
-                if self.indices_to_process is not None and -2 not in self.indices_to_process and os.path.exists(f"{self.working_dir}/music.wav"):
-                    self.logger.debug(f"Skipping music generation as -2 is not in the provided indices.")
+                if self.indices_to_process is not None and -3 not in self.indices_to_process and os.path.exists(f"{self.working_dir}/music.wav"):
+                    self.logger.debug(f"Skipping music generation as -3 is not in the provided indices.")
                 else:
                     self.bg_music_adder.generate_music(
                         prompt=music, 
                         input_video_path=f"{self.working_dir}/concat.mp4",
                         output_audio_path=f"{self.working_dir}/music.wav")
-                    pass
 
                 yield
                 # 9. Add background music

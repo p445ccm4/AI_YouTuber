@@ -6,7 +6,7 @@ import soundfile as sf
 from diffusers import StableAudioPipeline
 
 class MusicGenerator:
-    def __init__(self, logger=None):
+    def __init__(self, logger:logging.Logger=None):
         self.logger = logger
         self.model = None
 
@@ -19,7 +19,7 @@ class MusicGenerator:
             self.logger.info("Stable Audio model loaded.")
 
     def generate_music(self, prompt, input_video_path, output_audio_path):
-        n_waveforms = int(VideoFileClip(input_video_path).duration / 47)
+        n_waveforms = int(VideoFileClip(input_video_path).duration / 47) + 1
         self._load_model()
 
         # run the generation

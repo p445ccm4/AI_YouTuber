@@ -5,6 +5,7 @@ import argparse
 async def check_videos(folder_path, topic, indices):
     
     final_video_path = os.path.join(folder_path, f"final.mp4")
+    concat_video_path = os.path.join(folder_path, f"concat.mp4")
     music_path = os.path.join(folder_path, f"music.wav")
     thumbnail_path = os.path.join(folder_path, f"-1_captioned.png")
 
@@ -16,14 +17,15 @@ async def check_videos(folder_path, topic, indices):
     
     failed_indices = []
     if not os.path.exists(music_path):
+        failed_indices.append("-3")
+    if not os.path.exists(concat_video_path):
         failed_indices.append("-2")
-
+    if not os.path.exists(thumbnail_path) and "-1" not in failed_indices:
+        failed_indices.append("-1")
     for i in indices:
         captioned_file = os.path.join(folder_path, f"{i}_captioned.mp4")
         if not os.path.exists(captioned_file):
             failed_indices.append(str(i))
-    if not os.path.exists(thumbnail_path) and "-1" not in failed_indices:
-        failed_indices.append("-1")
 
     return "partially done", topic + ' ' + ' '.join(failed_indices)
 

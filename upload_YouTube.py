@@ -78,7 +78,7 @@ class YouTubeUploader:
         except Exception as e:
             self.logger.info(f"Error setting thumbnail: {e}")
 
-    def upload_from_topic_file(self, topic_file, publish_date, video_per_day):
+    def upload_from_topic_file(self, topic_file, publish_date, day_per_video):
         with open(topic_file, 'r') as f:
             topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
@@ -89,7 +89,7 @@ class YouTubeUploader:
             json_file = f"inputs/proposals/{topic}.json"
             topic_file_name = os.path.splitext(os.path.basename(topic_file))[0]
             working_dir = f"outputs/{topic_file_name}_{topic}"
-            this_publish_datetime_utc = publish_datetime_utc + datetime.timedelta(days=i//video_per_day)
+            this_publish_datetime_utc = publish_datetime_utc + datetime.timedelta(days=i * day_per_video)
 
             with open(json_file, 'r') as f:
                 data = json.load(f)

@@ -243,24 +243,24 @@ def create_demo():
             next_topic_button.click(next_choice, inputs=[current_topic, topics], outputs=current_topic)
             
         with gr.Tab("Upload to YouTube (Local Machine Only)"):
-            def run_upload(topics, publish_date, video_per_day, progress=gr.Progress(track_tqdm=True)):
+            def run_upload(topics, publish_date, day_per_video, progress=gr.Progress(track_tqdm=True)):
                 YTUploader_string_stream.truncate(0)
                 YTUploader_string_stream.seek(0)
                 
                 uploader = upload_YouTube.YouTubeUploader(logger=YTUploader_logger)
-                for _ in uploader.upload_from_topic_file(topics, publish_date, int(video_per_day)):
+                for _ in uploader.upload_from_topic_file(topics, publish_date, int(day_per_video)):
                     yield YTUploader_string_stream.getvalue()
                 yield YTUploader_string_stream.getvalue()
 
             with gr.Row():
                 publish_date = gr.Textbox(datetime.date.today().strftime('%Y-%m-%d'), label="Publish Date (YYYY-MM-DD)")
-                video_per_day = gr.Slider(minimum=1, maximum=5, value=1, label="Video per day")
+                day_per_video = gr.Slider(minimum=1, maximum=14, value=1, label="Day per video")
                 upload_button = gr.Button("Upload Videos", variant="primary")
             upload_progress = gr.Textbox(label="Progress Bar")
             upload_outputs = gr.Textbox(label="Output", lines=30, max_lines=30)
             upload_button.click(
                 fn=run_upload,
-                inputs=[topics_file_path, publish_date, video_per_day],
+                inputs=[topics_file_path, publish_date, day_per_video],
                 outputs=upload_outputs,
                 show_progress="full",
                 show_progress_on=upload_progress,

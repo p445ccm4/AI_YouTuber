@@ -254,7 +254,7 @@ def create_demo():
 
             with gr.Row():
                 publish_date = gr.Textbox(datetime.date.today().strftime('%Y-%m-%d'), label="Publish Date (YYYY-MM-DD)")
-                day_per_video = gr.Slider(minimum=1, maximum=14, value=1, label="Day per video")
+                day_per_video = gr.Slider(minimum=1, maximum=14, value=1, step=1, label="Day per video")
                 upload_button = gr.Button("Upload Videos", variant="primary")
             upload_progress = gr.Textbox(label="Progress Bar")
             upload_outputs = gr.Textbox(label="Output", lines=30, max_lines=30)

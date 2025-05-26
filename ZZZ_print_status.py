@@ -20,7 +20,7 @@ async def check_videos(folder_path, topic, indices):
         failed_indices.append("-3")
     if not os.path.exists(concat_video_path):
         failed_indices.append("-2")
-    if not os.path.exists(thumbnail_path) and "-1" not in failed_indices:
+    if not os.path.exists(thumbnail_path):
         failed_indices.append("-1")
     for i in indices:
         captioned_file = os.path.join(folder_path, f"{i}_captioned.mp4")

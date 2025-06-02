@@ -8,11 +8,12 @@ def sort_by_startint(a):
     return int(a.split("_")[0])
 
 class VideoConcatenator:
-    def __init__(self, working_dir, logger=None):
+    def __init__(self, working_dir, make_shorts=False, logger=None):
         self.working_dir = working_dir
         self.logger = logger
-        self.swoosh_transition = mp.ColorClip(size=(1280, 720), is_mask=True).with_audio(mp.AudioFileClip("inputs/swoosh.mp3").with_volume_scaled(0.3))
-        self.swoosh_start = mp.ColorClip(size=(1280, 720), is_mask=True).with_audio(mp.AudioFileClip("inputs/swoosh_1s.mp3").with_volume_scaled(0.5))
+        size = (720, 1280) if make_shorts else (1280, 720) 
+        self.swoosh_transition = mp.ColorClip(size=size, is_mask=True).with_audio(mp.AudioFileClip("inputs/swoosh.mp3").with_volume_scaled(0.3))
+        self.swoosh_start = mp.ColorClip(size=size, is_mask=True).with_audio(mp.AudioFileClip("inputs/swoosh_1s.mp3").with_volume_scaled(0.5))
 
 
     def concat_with_motion_blur(self, clips:list[mp.VideoClip], transition_duration=0.3):

@@ -8,7 +8,7 @@ import datetime
 # --- Import Functions Directly ---
 import ZZZ_print_status
 import ZZZ_print_titles
-import text2YTShorts_batch
+import text2YTVideos_batch
 import upload_YouTube
 import llm
 import yt_url_to_proposals
@@ -16,12 +16,12 @@ import yt_url_to_proposals
 # --- Set up loggers for text-to-YTShorts and YTuploader ---
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-text2YTShorts_logger = logging.getLogger("text-to-YTShorts")
-text2YTShorts_logger.setLevel(logging.DEBUG)
-text2YTShorts_string_stream = io.StringIO()
-text2YTShorts_string_handler = logging.StreamHandler(text2YTShorts_string_stream)
-text2YTShorts_string_handler.setFormatter(formatter)
-text2YTShorts_logger.addHandler(text2YTShorts_string_handler)
+text2YTVideos_logger = logging.getLogger("text-to-YTVideos")
+text2YTVideos_logger.setLevel(logging.DEBUG)
+text2YTVideos_string_stream = io.StringIO()
+text2YTVideos_string_handler = logging.StreamHandler(text2YTVideos_string_stream)
+text2YTVideos_string_handler.setFormatter(formatter)
+text2YTVideos_logger.addHandler(text2YTVideos_string_handler)
 
 YTUploader_logger = logging.getLogger("YTUploader")
 YTUploader_logger.setLevel(logging.DEBUG)
@@ -73,8 +73,8 @@ def create_demo():
                 save_topics_outputs = gr.Textbox(label="Last Update")
 
             with gr.Column():
-                print_status_button = gr.Button("Print Status", variant="primary")
                 print_status_outputs = gr.Code(label="Current Status", language='shell', interactive=True, max_lines=30)
+                print_status_button = gr.Button("Print Status", variant="primary")
                 apply_status_button = gr.Button("Copy to left", variant="huggingface")
                 
             apply_status_button.click(
@@ -96,7 +96,7 @@ def create_demo():
                     # start_index = gr.Textbox("1", label="Start Index")
                     ollama_model_transcribe = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:32b")
             make_proposals_only_button = gr.Button("Make Proposals", variant="primary")
-            make_proposals_and_generate_shorts_button = gr.Button("Make Proposals and Shorts (Experimental)", variant="huggingface")
+            make_proposals_and_generate_videos_button = gr.Button("Make Proposals and Videos (Experimental)", variant="huggingface")
             make_proposals_outputs = gr.Textbox(label="Progress Output", max_lines=30)
 
             make_proposals_only_button.click(fn=yt_url_to_proposals.transcribe_and_make_proposals, inputs=[yt_urls_and_series, new_topics_file_path, ollama_model_transcribe], outputs=make_proposals_outputs)
@@ -131,7 +131,7 @@ def create_demo():
             apply_llm_button.click(fn=lambda x: x, inputs=modified_proposal_content, outputs=proposal_content)
             save_proposal_button.click(save_file_content, inputs=[proposal_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
         
-        with gr.Tab("Process Text-to-YTShorts Batch", id="Process Text-to-YTShorts Batch"):
+        with gr.Tab("Process Text-to-YTVideos Batch", id="Process Text-to-YTVideos Batch"):
             def interrupt(interrupt_flag_path):
                 if os.path.exists(interrupt_flag_path):
                     os.remove(interrupt_flag_path)
@@ -139,47 +139,49 @@ def create_demo():
                     f.write("stop")
                 gr.Warning("Process will stop after processing this video. Please wait...")
 
-            def run_text2YTShorts_batch(topics_path, send_email, make_shorts, ollama_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
+            def run_text2YTVideos_batch(topics_path, send_email, make_shorts, ollama_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
                 if interrupt_flag_path:
                     if os.path.exists(interrupt_flag_path):
                         os.remove(interrupt_flag_path)
                     with open(interrupt_flag_path, "w") as f:
                         f.write("running")
-                text2YTShorts_string_stream.truncate(0)
-                text2YTShorts_string_stream.seek(0)
+                text2YTVideos_string_stream.truncate(0)
+                text2YTVideos_string_stream.seek(0)
 
-                for _ in text2YTShorts_batch.text2YTShorts_batch(topics_path, send_email, make_shorts, logger=text2YTShorts_logger, ollama_model=ollama_model):
+                for _ in text2YTVideos_batch.text2YTVideos_batch(topics_path, send_email, make_shorts, logger=text2YTVideos_logger, ollama_model=ollama_model):
                     with open(interrupt_flag_path, "r") as f:
                         flag = f.readline().strip()
-                    yield text2YTShorts_string_stream.getvalue()
+                    yield text2YTVideos_string_stream.getvalue()
 
                     if flag == "stop":
-                        text2YTShorts_logger.error("Process Interrupted")
-                        yield text2YTShorts_string_stream.getvalue()
+                        text2YTVideos_logger.error("Process Interrupted")
+                        yield text2YTVideos_string_stream.getvalue()
                         break
-                    
-                text2YTShorts_logger.info("Process Ended")
-                yield text2YTShorts_string_stream.getvalue()
+                
+                end_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                text2YTVideos_logger.info(f"Process Ended at {end_time}")
+                gr.Success(f"Process Ended at {end_time}", duration=0)
+                yield text2YTVideos_string_stream.getvalue()
             
             with gr.Row():
                 send_email_checkbox = gr.Checkbox(label="Send Email", value=False)
                 make_shorts_checkbox = gr.Checkbox(label="Make Shorts", value=False)
-                ollama_model_text2YTShorts = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:32b")
+                ollama_model_text2YTVideos = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:32b")
                 with gr.Column():
-                    text2YTShorts_batch_generate_button = gr.Button("Generate", variant="primary")
-                    text2YTShorts_batch_stop_button = gr.Button("Stop", variant="stop")
+                    text2YTVideos_batch_generate_button = gr.Button("Generate", variant="primary")
+                    text2YTVideos_batch_stop_button = gr.Button("Stop", variant="stop")
             interrupt_flag_path = gr.Text(".gradio/interrupt_flag", visible=False)
-            text2YTShorts_batch_progress = gr.Textbox(label="Progress Bar")
-            text2YTShorts_batch_outputs = gr.Textbox(text2YTShorts_string_stream.getvalue, label="Output", lines=30, max_lines=30)
-            text2YTShorts_batch_generate_button.click(
-                fn=run_text2YTShorts_batch,
-                inputs=[topics_file_path, send_email_checkbox, make_shorts_checkbox, ollama_model_text2YTShorts, interrupt_flag_path],
-                outputs=text2YTShorts_batch_outputs,
-                show_progress_on=text2YTShorts_batch_progress,
+            text2YTVideos_batch_progress = gr.Textbox(label="Progress Bar")
+            text2YTVideos_batch_outputs = gr.Textbox(text2YTVideos_string_stream.getvalue, label="Output", lines=30, max_lines=30)
+            text2YTVideos_batch_generate_button.click(
+                fn=run_text2YTVideos_batch,
+                inputs=[topics_file_path, send_email_checkbox, make_shorts_checkbox, ollama_model_text2YTVideos, interrupt_flag_path],
+                outputs=text2YTVideos_batch_outputs,
+                show_progress_on=text2YTVideos_batch_progress,
                 show_progress="full",
                 scroll_to_output=True
             )
-            text2YTShorts_batch_stop_button.click(
+            text2YTVideos_batch_stop_button.click(
                 interrupt, inputs=interrupt_flag_path, outputs=None
             )
 
@@ -277,7 +279,7 @@ def create_demo():
                 submit_btn="Print",
             )
 
-        make_proposals_and_generate_shorts_button.click(
+        make_proposals_and_generate_videos_button.click(
             fn=yt_url_to_proposals.transcribe_and_make_proposals, 
             inputs=[yt_urls_and_series, new_topics_file_path, ollama_model_transcribe], 
             outputs=make_proposals_outputs
@@ -286,10 +288,10 @@ def create_demo():
             inputs=make_proposals_outputs,
             outputs=make_proposals_outputs
         ).success(
-            fn=run_text2YTShorts_batch,
-            inputs=[new_topics_file_path, send_email_checkbox, make_shorts_checkbox, ollama_model_text2YTShorts, interrupt_flag_path],
-            outputs=text2YTShorts_batch_outputs,
-            show_progress_on=text2YTShorts_batch_progress,
+            fn=run_text2YTVideos_batch,
+            inputs=[new_topics_file_path, send_email_checkbox, make_shorts_checkbox, ollama_model_text2YTVideos, interrupt_flag_path],
+            outputs=text2YTVideos_batch_outputs,
+            show_progress_on=text2YTVideos_batch_progress,
             show_progress="full",
             scroll_to_output=True
         )

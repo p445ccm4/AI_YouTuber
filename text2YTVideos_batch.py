@@ -1,6 +1,6 @@
 import os
 import traceback
-import text2YTShorts_single
+import text2YTVideos_single
 import logging
 import argparse
 import smtplib
@@ -9,7 +9,7 @@ import datetime
 import time
 import tqdm
 
-def text2YTShorts_batch(topic_file_path:str, send_email=False, make_shorts=True, ollama_model="qwen3:32b", logger=None): 
+def text2YTVideos_batch(topic_file_path:str, send_email=False, make_shorts=True, ollama_model="qwen3:32b", logger=None): 
     with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
@@ -36,7 +36,7 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, make_shorts=True,
 
         status = "Failed"
         try:
-            shorts_maker = text2YTShorts_single.YTShortsMaker(
+            videos_maker = text2YTVideos_single.YTVideosMaker(
                 json_file,
                 working_dir,
                 indices_to_process,
@@ -44,7 +44,7 @@ def text2YTShorts_batch(topic_file_path:str, send_email=False, make_shorts=True,
                 ollama_model=ollama_model,
                 logger=logger
             )
-            for _ in shorts_maker.run():
+            for _ in videos_maker.run():
                 yield
             status = "Successful"
             trace = None
@@ -92,4 +92,4 @@ if __name__ == "__main__":
     parser.add_argument("--email", action="store_true", help="Send email notification when finish processing each video.")
     args = parser.parse_args()
 
-    text2YTShorts_batch(args.topic_file_path, args.email)
+    text2YTVideos_batch(args.topic_file_path, args.email)

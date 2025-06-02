@@ -1,6 +1,6 @@
-from ollama import Client
+import ollama
 
-OLLAMA_CLIENT = Client()
+OLLAMA_CLIENT = ollama.Client()
 
 def gen_response(user_message:str, history:list[dict], ollama_model:str, system_prompt:str="", stream=True, keep_alive=None):
     # Handle User Text Input
@@ -47,39 +47,5 @@ def get_ollama_model_names():
     Returns:
         list: A list of model names, or an empty list if there's an error.
     """
-    import subprocess
-    ollama_process = subprocess.Popen(
-        ['ollama', 'list'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-
-    tail_process = subprocess.Popen(
-        ['tail', '-n', '+2'],
-        stdin=ollama_process.stdout,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-
-    ollama_process.stdout.close() # Important to close to prevent deadlocks
-
-    cut_process = subprocess.Popen(
-        ['cut', '-d', ' ', '-f1'],
-        stdin=tail_process.stdout,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-
-    tail_process.stdout.close() # Important to close to prevent deadlocks
-
-    stdout, stderr = cut_process.communicate()
-
-    if cut_process.returncode != 0:
-        print(f"Error running cut: {stderr}")
-        return []
-
-    model_names = [line.strip() for line in stdout.splitlines() if line.strip()]
-    return model_names
+    model_list = ollama.list().get("models")
+    return [m['model'] for m in model_list]

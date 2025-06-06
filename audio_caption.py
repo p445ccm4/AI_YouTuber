@@ -30,6 +30,7 @@ class VideoCaptioner:
             self.logger.info("Whisper model loaded.")
 
     def get_audio_timestamp(self, caption, input_audio_path):
+        """Return (True, Timed Caption) if the transcription is matched with caption or saved by LLM."""
         # Whisper inference
         self._load_model()
         self.pipe.model.to("cuda")
@@ -44,10 +45,7 @@ class VideoCaptioner:
 
         transcription_alnum = ''.join(e for e in timed_caption["text"] if e.isalnum()).lower()
         caption_alnum = ''.join(e for e in caption if e.isalnum()).lower()
-        # Return True if the transcription is matched with caption
-        if transcription_alnum == caption_alnum:
-            return True, timed_caption
-        else:
+        if transcription_alnum != caption_alnum:
             # Ask DeepSeek if the transcription is not matched with caption
             with open("inputs/System_Prompt_Timed_Transcription.txt", "r") as f:
                 system_prompt = f.read()
@@ -58,7 +56,7 @@ class VideoCaptioner:
                             }
             )
             
-            for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False, keep_alive=0):
+            for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False):
                 response = r
             _, _, response = response.rpartition("</think>")
             response = response.strip()
@@ -67,11 +65,22 @@ class VideoCaptioner:
             self.logger.info(comparison)
             if response.startswith("modified"):
                 try:
-                    return True, json.loads(response.removeprefix("modified ").strip())
-                except json.JSONDecodeError:
+                    timed_caption = json.loads(response.removeprefix("modified ").strip())
+                except json.JSONDecodeError as e:
                     self.logger.error(f"Failed to parse modified JSON")
+                    raise e
             else:
                 return False, comparison
+        
+        return self.check_timed_caption(timed_caption, input_audio_path)
+
+    @staticmethod
+    def check_timed_caption(timed_caption, input_audio_path):
+        audio_duration = moviepy.AudioFileClip(input_audio_path).duration
+        if any(chunk["timestamp"][0] > audio_duration for chunk in timed_caption["chunks"]):
+            return False, f"Modified caption has wrong timestamp: {timed_caption}"
+        else:
+            return True, timed_caption
 
     def add_audio_and_caption_tiktok_style(self, timed_caption, input_video_path, input_audio_path, output_video_path):
         # Load video and audio

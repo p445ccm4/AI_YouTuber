@@ -81,14 +81,14 @@ class YTVideosMaker:
             voiceover = element.get('voiceover', caption)
 
             try:
-                speaking_rate = 20
+                exaggeration_offset = 0.2
                 while True:
                     yield
                     # 3. Generate audio
                     self.audio_generator.generate_audio(
                         caption=voiceover,
                         output_audio_path=f"{self.working_dir}/{index}.wav",
-                        speaking_rate=speaking_rate
+                        exaggeration_offset=exaggeration_offset
                     )
 
                     yield
@@ -98,18 +98,18 @@ class YTVideosMaker:
                         input_audio_path=f"{self.working_dir}/{index}.wav"
                     )
                     if caption_matched:
-                        self.logger.info(f"Successfully matched caption with speaking rate {speaking_rate}")
+                        self.logger.info(f"Successfully matched caption with speaking rate {exaggeration_offset}")
                         break
-                    elif speaking_rate > 15:
+                    elif exaggeration_offset > 0:
                         # Generate slower audio if tiktok captioning is failed
-                        self.logger.warn(f"""Failed to match caption with speaking rate {speaking_rate}.\nCaption comparison:
+                        self.logger.warning(f"""Failed to match caption with speaking rate {exaggeration_offset}.\nCaption comparison:
                                          {timed_caption}\nRetry audio with slower speaking rate...
                                          """)
-                        speaking_rate -= 2
+                        exaggeration_offset -= 0.05
                         continue
                     else:
                         raise Exception(f"""
-                                         Failed to match caption with speaking rate {speaking_rate}.\nCaption comparison:
+                                         Failed to match caption with speaking rate {exaggeration_offset}.\nCaption comparison:
                                          {timed_caption}
                                         """)
 

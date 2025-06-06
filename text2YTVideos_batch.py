@@ -13,8 +13,8 @@ def text2YTVideos_batch(topic_file_path:str, send_email=False, make_shorts=True,
     with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
-    for line_idx, line in tqdm.tqdm(enumerate(lines), total=len(lines), unit="topics"):
-        line = line.split()
+    for line_idx, line in enumerate(tqdm.tqdm(lines, unit="topics")):
+        line = lines[line_idx].split()
         topic = line[0]
         indices_to_process = [int(i) for i in line[1:]] if len(line) > 1 else None # None if no indices provided
 

@@ -1,3 +1,4 @@
+import json
 import os
 import traceback
 import text2YTVideos_single
@@ -58,9 +59,11 @@ def text2YTVideos_batch(topic_file_path:str, send_email=False, make_shorts=True,
                 end_time = time.time()
                 processing_time = end_time - start_time
                 
-                with open("inputs/email_config.txt", "r") as f:
-                    sender_email = f.readline().strip()
-                    sender_password = f.readline().strip()
+                # Load Gmail configuration
+                with open("inputs/SMTP_Google_App_Password.json", "r") as f:
+                    gmail_config = json.load(f)
+                sender_email = gmail_config["email"]
+                sender_app_password = gmail_config["app_password"]
                 receiver_email = "michael.ch@success-base.com"
 
                 formatted_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -76,7 +79,7 @@ def text2YTVideos_batch(topic_file_path:str, send_email=False, make_shorts=True,
 
                 try:
                     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-                        server.login(sender_email, sender_password)
+                        server.login(sender_email, sender_app_password)
                         server.sendmail(sender_email, receiver_email, message.as_string())
                     logger.info("Email sent successfully")
                 except Exception as e:

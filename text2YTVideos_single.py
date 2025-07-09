@@ -144,7 +144,7 @@ class YTVideosMaker:
                 yield
                 # 7. Concatenate videos
                 if self.indices_to_process is not None and -2 not in self.indices_to_process and os.path.exists(f"{self.working_dir}/concat.mp4"):
-                    self.logger.warn(f"Skipping concat as -2 is not in the provided indices.")
+                    self.logger.warning(f"Skipping concat as -2 is not in the provided indices.")
                 else:
                     self.concatenator.concatenate_videos()
                     

@@ -250,6 +250,8 @@ def create_demo():
                 YTUploader_string_stream.seek(0)
                 
                 uploader = upload_YouTube.YouTubeUploader(logger=YTUploader_logger)
+                for _ in uploader.authenticate_youtube():
+                    yield YTUploader_string_stream.getvalue()
                 for _ in uploader.upload_from_topic_file(topics, publish_date, int(day_per_video)):
                     yield YTUploader_string_stream.getvalue()
                 yield YTUploader_string_stream.getvalue()

@@ -4,33 +4,33 @@ import json
 import os
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
-import googleapiclient.errors
 import googleapiclient.http
 import logging
-import gradio as gr
 import tqdm
 
 class YouTubeUploader:
     SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
     CLIENT_SECRETS_FILE_PATH = "inputs/YouTube_Upload_API.json"
-    REDIRECT_URL = "http://localhost:8080/"
 
     def __init__(self, logger=None):
         self.logger = logger or self._setup_logger()
-        self._authenticate_youtube()
 
     def _setup_logger(self):
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         logger = logging.getLogger(__name__)
         return logger
     
-    def _authenticate_youtube(self):
+    def authenticate_youtube(self):
         os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
         flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
             self.CLIENT_SECRETS_FILE_PATH, self.SCOPES)
 
-        credentials = flow.run_local_server(timeout=10, browser="microsoft-edge")
+        server = flow.run_local_server(timeout=10, open_browser=False)
+        auth_uri = next(server)
+        self.logger.info(f"Open this link:\n{auth_uri}")
+        yield
+        credentials = next(server)
         self.youtube = googleapiclient.discovery.build(
             "youtube", "v3", credentials=credentials)
 

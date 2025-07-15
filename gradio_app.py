@@ -257,7 +257,8 @@ def create_demo():
                 yield YTUploader_string_stream.getvalue()
 
             with gr.Row():
-                publish_date = gr.Textbox(datetime.date.today().strftime('%Y-%m-%d'), label="Publish Date (YYYY-MM-DD)")
+                publish_date = datetime.datetime.combine(datetime.date.today(), datetime.time(8, 0)).strftime("%d/%m/%Y, %H:%M:%S")
+                publish_date = gr.DateTime(value=publish_date, label="Publish Date (YYYY-MM-DD HH:MM)", type='datetime')
                 day_per_video = gr.Slider(minimum=1, maximum=14, value=1, step=1, label="Day per video")
                 upload_button = gr.Button("Upload Videos", variant="primary")
             upload_progress = gr.Textbox(label="Progress Bar")

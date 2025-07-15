@@ -78,11 +78,17 @@ class YouTubeUploader:
         except Exception as e:
             self.logger.info(f"Error setting thumbnail: {e}")
 
-    def upload_from_topic_file(self, topic_file, publish_date, day_per_video):
+    def upload_from_topic_file(self, topic_file, publish_datetime, day_per_video):
         with open(topic_file, 'r') as f:
             topics = [line.split()[0] for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
-        publish_datetime_utc = datetime.datetime.strptime(publish_date, '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        if isinstance(publish_datetime, str):
+            publish_datetime_utc = datetime.datetime.strptime(publish_datetime, '%Y-%m-%d').replace(tzinfo=datetime.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        elif isinstance(publish_datetime, datetime.datetime):
+            publish_datetime_utc = publish_datetime.astimezone(datetime.timezone.utc)
+        else:
+            raise TypeError()
+
         successful_topics = []
         failed_topics = []
         for i, topic in enumerate(tqdm.tqdm(topics)):

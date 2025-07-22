@@ -6,11 +6,11 @@ import json
 import llm
 
 class VideoCaptioner:
-    def __init__(self, make_shorts, ollama_model, logger):
+    def __init__(self, make_shorts, llm_model, logger):
         self.make_shorts = make_shorts
         self.logger = logger
         self.pipe = None
-        self.ollama_model = ollama_model
+        self.ollama_model = llm_model
 
     def _load_model(self):
         if not self.pipe:
@@ -34,14 +34,19 @@ class VideoCaptioner:
         # Whisper inference
         self._load_model()
         self.pipe.model.to("cuda")
-        timed_caption = self.pipe(
-            input_audio_path, 
-            return_timestamps="word",
-            generate_kwargs={
-                "language": "english",
-            }
-        )
-        self.pipe.model.to("cpu")
+        try:
+            timed_caption = self.pipe(
+                input_audio_path, 
+                return_timestamps="word",
+                generate_kwargs={
+                    "language": "english",
+                }
+            )
+        except Exception as e:
+            self.logger.error(f"Audio Caption has error: {e}")
+            raise e
+        finally:
+            self.pipe.model.to("cpu")
 
         transcription_alnum = ''.join(e for e in timed_caption["text"] if e.isalnum()).lower()
         caption_alnum = ''.join(e for e in caption if e.isalnum()).lower()

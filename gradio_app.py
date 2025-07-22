@@ -94,23 +94,23 @@ def create_demo():
                     new_topics_file_path = gr.Dropdown(label="Topics file name", allow_custom_value=True)
                     # series = gr.Dropdown(["Relationship", "Motivation", "MBTI", "Zodiac", "Other"], label="Series", allow_custom_value=True)
                     # start_index = gr.Textbox("1", label="Start Index")
-                    ollama_model_transcribe = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:32b")
+                    llm_model_transcribe = gr.Dropdown(label="llm model", choices=llm.get_model_names(), value="qwen3:32b")
             make_proposals_only_button = gr.Button("Make Proposals", variant="primary")
             make_proposals_and_generate_videos_button = gr.Button("Make Proposals and Videos (Experimental)", variant="huggingface")
             make_proposals_outputs = gr.Textbox(label="Progress Output", max_lines=30)
 
-            make_proposals_only_button.click(fn=yt_url_to_proposals.transcribe_and_make_proposals, inputs=[yt_urls_and_series, new_topics_file_path, ollama_model_transcribe], outputs=make_proposals_outputs)
+            make_proposals_only_button.click(fn=yt_url_to_proposals.transcribe_and_make_proposals, inputs=[yt_urls_and_series, new_topics_file_path, llm_model_transcribe], outputs=make_proposals_outputs)
 
             # TODO: add a new section underneath after generating topics file.
             # Allow user to give follow-up ammendments for the proposal
 
         with gr.Tab("Create or Edit Proposals"):
-            def ask_LLM(proposal_content, modified_proposal_content, user_input, ollama_model):
+            def ask_LLM(proposal_content, modified_proposal_content, user_input, llm_model):
                 proposal_content = modified_proposal_content or proposal_content
                 with open("inputs/System_Prompt_Proposal_Single.txt", "r") as f:
                     system_prompt = f.read()
                 message = "\n\n".join([user_input, proposal_content])
-                for response in llm.gen_response(message, [], ollama_model, system_prompt):
+                for response in llm.gen_response(message, [], llm_model, system_prompt):
                     yield response
                 _, _, response = response.rpartition("/<think>")
 
@@ -121,13 +121,13 @@ def create_demo():
                     save_proposal_button = gr.Button("Save Proposal", variant="primary")
                 with gr.Column():
                     with gr.Row():
-                        LLM_user_input = gr.Textbox(label="Ask LLM to modify the proposal", submit_btn=True)
-                        ollama_model_edit_proposal = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:32b")
+                        llm_user_input = gr.Textbox(label="Ask LLM to modify the proposal", submit_btn=True)
+                        llm_model_edit_proposal = gr.Dropdown(label="llm model", choices=llm.get_model_names(), value="qwen3:32b")
                         # ask_llm_button = gr.Button("Ask LLM", variant="primary")
                     modified_proposal_content = gr.Code(None, label="Modified Proposal Content", language="json", max_lines=20)
                     apply_llm_button = gr.Button("Copy to left", variant="primary")
             
-            LLM_user_input.submit(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, LLM_user_input, ollama_model_edit_proposal], outputs=modified_proposal_content)
+            llm_user_input.submit(fn=ask_LLM, inputs=[proposal_content, modified_proposal_content, llm_user_input, llm_model_edit_proposal], outputs=modified_proposal_content)
             apply_llm_button.click(fn=lambda x: x, inputs=modified_proposal_content, outputs=proposal_content)
             save_proposal_button.click(save_file_content, inputs=[proposal_path, proposal_content], outputs=gr.Textbox(label="Last Update"))
         
@@ -139,7 +139,7 @@ def create_demo():
                     f.write("stop")
                 gr.Warning("Process will stop after processing this video. Please wait...")
 
-            def run_text2YTVideos_batch(topics_path, send_email, make_shorts, ollama_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
+            def run_text2YTVideos_batch(topics_path, send_email, make_shorts, llm_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
                 if interrupt_flag_path:
                     if os.path.exists(interrupt_flag_path):
                         os.remove(interrupt_flag_path)
@@ -148,7 +148,7 @@ def create_demo():
                 text2YTVideos_string_stream.truncate(0)
                 text2YTVideos_string_stream.seek(0)
 
-                for _ in text2YTVideos_batch.text2YTVideos_batch(topics_path, send_email, make_shorts, logger=text2YTVideos_logger, ollama_model=ollama_model):
+                for _ in text2YTVideos_batch.text2YTVideos_batch(topics_path, send_email, make_shorts, logger=text2YTVideos_logger, llm_model=llm_model):
                     with open(interrupt_flag_path, "r") as f:
                         flag = f.readline().strip()
                     yield text2YTVideos_string_stream.getvalue()
@@ -166,7 +166,7 @@ def create_demo():
             with gr.Row():
                 send_email_checkbox = gr.Checkbox(label="Send Email", value=False)
                 make_shorts_checkbox = gr.Checkbox(label="Make Shorts", value=False)
-                ollama_model_text2YTVideos = gr.Dropdown(label="ollama model", choices=llm.get_ollama_model_names(), value="qwen3:32b")
+                llm_model_text2YTVideos = gr.Dropdown(label="llm model", choices=llm.get_model_names(), value="qwen3:32b")
                 with gr.Column():
                     text2YTVideos_batch_generate_button = gr.Button("Generate", variant="primary")
                     text2YTVideos_batch_stop_button = gr.Button("Stop", variant="stop")
@@ -175,7 +175,7 @@ def create_demo():
             text2YTVideos_batch_outputs = gr.Textbox(text2YTVideos_string_stream.getvalue, label="Output", lines=30, max_lines=30)
             text2YTVideos_batch_generate_button.click(
                 fn=run_text2YTVideos_batch,
-                inputs=[topics_file_path, send_email_checkbox, make_shorts_checkbox, ollama_model_text2YTVideos, interrupt_flag_path],
+                inputs=[topics_file_path, send_email_checkbox, make_shorts_checkbox, llm_model_text2YTVideos, interrupt_flag_path],
                 outputs=text2YTVideos_batch_outputs,
                 show_progress_on=text2YTVideos_batch_progress,
                 show_progress="full",
@@ -284,7 +284,7 @@ def create_demo():
 
         make_proposals_and_generate_videos_button.click(
             fn=yt_url_to_proposals.transcribe_and_make_proposals, 
-            inputs=[yt_urls_and_series, new_topics_file_path, ollama_model_transcribe], 
+            inputs=[yt_urls_and_series, new_topics_file_path, llm_model_transcribe], 
             outputs=make_proposals_outputs
         ).success(
             fn=lambda outputs: outputs + "Now go to 'Process Text-to-YTShorts Batch' Tab to see Shorts generation progress.\n",
@@ -292,7 +292,7 @@ def create_demo():
             outputs=make_proposals_outputs
         ).success(
             fn=run_text2YTVideos_batch,
-            inputs=[new_topics_file_path, send_email_checkbox, make_shorts_checkbox, ollama_model_text2YTVideos, interrupt_flag_path],
+            inputs=[new_topics_file_path, send_email_checkbox, make_shorts_checkbox, llm_model_text2YTVideos, interrupt_flag_path],
             outputs=text2YTVideos_batch_outputs,
             show_progress_on=text2YTVideos_batch_progress,
             show_progress="full",

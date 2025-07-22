@@ -31,15 +31,21 @@ class AudioGenerator:
         self._load_model() # Load model here
 
         self._chatterbox_to('cuda')
-        wav = self.model.generate(
-            text=caption,
-            audio_prompt_path=self.reference_audio_path,
-            exaggeration=0.5+exaggeration_offset,
-            cfg_weight=0.5-exaggeration_offset
-        )
-        self._chatterbox_to('cpu')
-        torchaudio.save(output_audio_path, wav, self.model.sr)
-        self.logger.info(f"Chatterbox generated audio: {output_audio_path}")
+        try:
+            wav = self.model.generate(
+                text=caption,
+                audio_prompt_path=self.reference_audio_path,
+                exaggeration=0.5+exaggeration_offset,
+                cfg_weight=0.5-exaggeration_offset
+            )
+        except Exception as e:
+            self.logger.error(f"Chatterbox has an error: {e}")
+            raise e
+        else:
+            torchaudio.save(output_audio_path, wav, self.model.sr)
+            self.logger.info(f"Chatterbox generated audio: {output_audio_path}")
+        finally:
+            self._chatterbox_to('cpu')
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

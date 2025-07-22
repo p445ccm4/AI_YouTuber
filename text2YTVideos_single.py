@@ -6,14 +6,14 @@ import traceback
 import gen_audio, gen_freeze_video, audio_caption, concat, gen_music, upload_YouTube # gen_video
 
 class YTVideosMaker:
-    def __init__(self, json_file, working_dir, indices_to_process=None, make_shorts=True, ollama_model="gemma3:27b", logger=None, upload=False):
+    def __init__(self, json_file, working_dir, indices_to_process=None, make_shorts=True, llm_model="gemma3:27b", logger=None, upload=False):
         self.json_file = json_file
         self.working_dir = working_dir
         self.indices_to_process = indices_to_process
         self.logger:logging.Logger = logger
         # self.video_generator = gen_video.VideoGenerator(logger=self.logger)
         self.freeze_video_generator = gen_freeze_video.FreezeVideoGenerator(make_shorts=make_shorts, logger=self.logger)
-        self.audio_captioner = audio_caption.VideoCaptioner(make_shorts=make_shorts, ollama_model=ollama_model, logger=self.logger)
+        self.audio_captioner = audio_caption.VideoCaptioner(make_shorts=make_shorts, llm_model=llm_model, logger=self.logger)
         self.concatenator = concat.VideoConcatenator(self.working_dir, make_shorts=make_shorts, logger=self.logger)
         self.bg_music_adder = gen_music.MusicGenerator(logger=self.logger)
         self.yt_uploader = upload_YouTube.YouTubeUploader(logger=self.logger) if upload else None

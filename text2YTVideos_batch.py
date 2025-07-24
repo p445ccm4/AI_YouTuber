@@ -10,7 +10,7 @@ import datetime
 import time
 import tqdm
 
-def text2YTVideos_batch(topic_file_path:str, send_email=False, make_shorts=True, llm_model="qwen3:32b", logger=None): 
+async def text2YTVideos_batch(topic_file_path:str, send_email=False, make_shorts=True, llm_model="qwen3:32b", logger=None): 
     with open(topic_file_path, 'r') as f:
         lines = [line.strip() for line in f.readlines() if line.strip() and not line.strip().startswith("#")]
 
@@ -45,7 +45,7 @@ def text2YTVideos_batch(topic_file_path:str, send_email=False, make_shorts=True,
                 llm_model=llm_model,
                 logger=logger
             )
-            for _ in videos_maker.run():
+            async for _ in videos_maker.run():
                 yield
             status = "Successful"
             trace = None

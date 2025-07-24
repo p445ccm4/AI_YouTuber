@@ -64,28 +64,24 @@ def load_topics(topics_file_path):
 # --- Gradio Interface ---
 def create_demo():
     with gr.Blocks(title="AI YTB") as demo:
-        with gr.Row():
-            topics_file_path = gr.Dropdown(label="Topic file name", allow_custom_value=True)
-        with gr.Row():
-            with gr.Column(): 
-                topics_content = gr.Code(value=load_file_content, inputs=topics_file_path, label="Topic File Content", language='shell', interactive=True, max_lines=30)
-                save_topics_button = gr.Button("Save Topic File", variant="primary")
-                save_topics_outputs = gr.Textbox(label="Last Update")
-
-            with gr.Column():
-                print_status_outputs = gr.Code(label="Current Status", language='shell', interactive=True, max_lines=30)
-                print_status_button = gr.Button("Print Status", variant="primary")
-                apply_status_button = gr.Button("Copy to left", variant="huggingface")
-                
-            apply_status_button.click(
-                fn=lambda x: x, inputs=print_status_outputs, outputs=topics_content
-            ).success(
-                save_file_content, inputs=[topics_file_path, topics_content], outputs=save_topics_outputs
-            )
-            print_status_button.click(fn=ZZZ_print_status.print_status,inputs=topics_file_path, outputs=print_status_outputs)
-            save_topics_button.click(
-                save_file_content, inputs=[topics_file_path, topics_content], outputs=save_topics_outputs
-            )
+        topics_file_path = gr.Dropdown(label="Topic file name", allow_custom_value=True)
+        topics_content = gr.Code(value=load_file_content, inputs=topics_file_path, label="Topic File Content", language='shell', interactive=True, max_lines=30)
+        refresh_status_button = gr.Button("Refresh Status", variant="huggingface")
+        save_topics_button = gr.Button("Save Topic File", variant="primary")
+        save_topics_outputs = gr.Textbox(label="Last Update")
+            
+        refresh_status_button.click(
+            fn=ZZZ_print_status.print_status,
+            inputs=topics_file_path, 
+            outputs=topics_content
+        ).success(
+            save_file_content, 
+            inputs=[topics_file_path, topics_content], 
+            outputs=save_topics_outputs
+        )
+        save_topics_button.click(
+            save_file_content, inputs=[topics_file_path, topics_content], outputs=save_topics_outputs
+        )
 
         with gr.Tab("Make Proposals from Existing YouTube Videos"):
             with gr.Row():
@@ -105,12 +101,12 @@ def create_demo():
             # Allow user to give follow-up ammendments for the proposal
 
         with gr.Tab("Create or Edit Proposals"):
-            def ask_LLM(proposal_content, modified_proposal_content, user_input, llm_model):
+            async def ask_LLM(proposal_content, modified_proposal_content, user_input, llm_model):
                 proposal_content = modified_proposal_content or proposal_content
                 with open("inputs/System_Prompt_Proposal_Single.txt", "r") as f:
                     system_prompt = f.read()
                 message = "\n\n".join([user_input, proposal_content])
-                for response in llm.gen_response(message, [], llm_model, system_prompt):
+                async for response in llm.gen_response(message, [], llm_model, system_prompt):
                     yield response
                 _, _, response = response.rpartition("/<think>")
 
@@ -139,7 +135,7 @@ def create_demo():
                     f.write("stop")
                 gr.Warning("Process will stop after processing this video. Please wait...")
 
-            def run_text2YTVideos_batch(topics_path, send_email, make_shorts, llm_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
+            async def run_text2YTVideos_batch(topics_path, send_email, make_shorts, llm_model, interrupt_flag_path, progress=gr.Progress(track_tqdm=True)):
                 if interrupt_flag_path:
                     if os.path.exists(interrupt_flag_path):
                         os.remove(interrupt_flag_path)
@@ -148,7 +144,7 @@ def create_demo():
                 text2YTVideos_string_stream.truncate(0)
                 text2YTVideos_string_stream.seek(0)
 
-                for _ in text2YTVideos_batch.text2YTVideos_batch(topics_path, send_email, make_shorts, logger=text2YTVideos_logger, llm_model=llm_model):
+                async for _ in text2YTVideos_batch.text2YTVideos_batch(topics_path, send_email, make_shorts, logger=text2YTVideos_logger, llm_model=llm_model):
                     with open(interrupt_flag_path, "r") as f:
                         flag = f.readline().strip()
                     yield text2YTVideos_string_stream.getvalue()

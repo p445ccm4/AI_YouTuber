@@ -27,7 +27,7 @@ class YTVideosMaker:
             reference_audio_path = "inputs/reference_audio_man.wav"
         self.audio_generator = gen_audio.AudioGenerator(logger=self.logger, reference_audio_path=reference_audio_path)
 
-    def run(self):
+    async def run(self):
         os.makedirs(self.working_dir, exist_ok=True)
         failed_idx_traceback = {}
 
@@ -93,7 +93,7 @@ class YTVideosMaker:
 
                     yield
                     # 4. Get transcription
-                    caption_matched, timed_caption = self.audio_captioner.get_audio_timestamp(
+                    caption_matched, timed_caption = await self.audio_captioner.get_audio_timestamp(
                         caption=caption,
                         input_audio_path=f"{self.working_dir}/{index}.wav"
                     )
@@ -194,7 +194,7 @@ class YTVideosMaker:
             string_failed_idx_traceback = bytes(json.dumps(failed_idx_traceback, separators=(", \n", ": \n")), "utf-8").decode("unicode_escape")
             raise Exception(f"\nFailed iterations: \n{string_failed_idx_traceback}")
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Process JSON data to generate YouTube videos.")
     parser.add_argument("-j", "--json_file", default="inputs/proposals/News_trump_ditches_penny.json", help="Path to the JSON file.")
     parser.add_argument("-w", "--working_dir", default="outputs/20250211_News_trump_ditches_penny", help="Working directory for output files.")
@@ -218,4 +218,5 @@ def main():
     videos_maker.run()
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())

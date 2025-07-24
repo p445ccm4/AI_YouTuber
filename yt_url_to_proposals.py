@@ -28,7 +28,7 @@ async def get_write_proposal_py(transcription:str, series:str, start_index:int|s
         {transcription}
         """
     
-    for r in gen_response(contents, [], ollama_model, system_prompt, stream=False):
+    async for r in gen_response(contents, [], ollama_model, system_prompt, stream=False):
         response:str = r
     _, _, response = response.rpartition("</think>")
     _, _, response = response.rpartition("```python")

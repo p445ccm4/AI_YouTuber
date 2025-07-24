@@ -29,7 +29,7 @@ class VideoCaptioner:
             )
             self.logger.info("Whisper model loaded.")
 
-    def get_audio_timestamp(self, caption, input_audio_path):
+    async def get_audio_timestamp(self, caption, input_audio_path):
         """Return (True, Timed Caption) if the transcription is matched with caption or saved by LLM."""
         # Whisper inference
         self._load_model()
@@ -61,7 +61,7 @@ class VideoCaptioner:
                             }
             )
             
-            for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False):
+            async for r in llm.gen_response(message, [], self.ollama_model, system_prompt, stream=False):
                 response = r
             _, _, response = response.rpartition("</think>")
             response = response.strip()
